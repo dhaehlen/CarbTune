@@ -114,7 +114,8 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carburett
 
 | ID    | Requirement                                                                                             | Priority |
 |-------|---------------------------------------------------------------------------------------------------------|----------|
-| MA-01 | The app shall be available on iOS (≥ 16) and Android (≥ 10).                                           | High     |
+| MA-01 | The app shall be built using **Flutter** (Dart) targeting iOS (≥ 16) and Android (≥ 10) from a single codebase. | High     |
+| MA-01a | BLE communication shall use the **flutter_blue_plus** package (or equivalent actively maintained Flutter BLE library). | High     |
 | MA-02 | The app shall discover and pair with the ESP32 device automatically.                                    | High     |
 | MA-03 | The app shall display connection status (connected / disconnected / searching).                         | High     |
 | MA-04 | The app shall function without an internet connection.                                                  | High     |
@@ -180,7 +181,7 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | ~~1~~ | ~~**Wireless transport:** BLE vs. Wi-Fi — evaluate range, power, and pairing UX.~~ | ~~Hardware / Firmware~~ | **Resolved 2026-02-25** — BLE selected. Wi-Fi web UI added as stretch goal SG-01. See WC-01 to WC-07. |
 | ~~2~~ | ~~**Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range.~~ | ~~Hardware Designer~~ | **Resolved 2026-02-25** — NXP MPXH6115AC6U, analog output, 15–115 kPa, 5 V supply. Voltage divider required for ESP32 ADC (see SA-06 to SA-11). |
 | ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~ | ~~End User / PM~~ | **Resolved 2026-02-25** — min 1, max 4, primary use case 4. |
-| 4  | **Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native). | Mobile Developer | TBD |
+| ~~4~~ | ~~**Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native).~~ | ~~Mobile Developer~~ | **Resolved 2026-02-25** — Flutter selected. See MA-01 and MA-01a. |
 | ~~5~~ | ~~**Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned.~~ | ~~End User~~ | **Resolved 2026-02-25** — Honda CB400F, target 16–24 cmHg (~98.1–99.2 kPa absolute). Set as app default in TG-01. |
 
 ---
@@ -196,6 +197,8 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | BLE   | Bluetooth Low Energy                                                       |
 | OTA   | Over-The-Air firmware update                                               |
 | GATT  | Generic Attribute Profile — BLE data exchange standard                     |
+| Flutter | Google's open-source UI framework using Dart; compiles to native iOS and Android |
+| Dart  | Programming language used by Flutter                                       |
 
 ---
 
@@ -208,3 +211,4 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | 0.3     | 2026-02-25 | —       | SA-06 to SA-11 added: sensor confirmed as NXP MPXH6115AC6U, analog interface, 5 V supply, voltage divider requirement, transfer function |
 | 0.4     | 2026-02-25 | —       | WC section updated: BLE selected as primary transport, WC-01 to WC-07 revised. Section 7 (Stretch Goals) added with SG-01 Wi-Fi web UI fallback. Sections renumbered. |
 | 0.5     | 2026-02-25 | —       | Target engine confirmed as Honda CB400F. SA-03 updated: default display unit cmHg. TG-01 updated: default target range 16–24 cmHg. Background section updated. |
+| 0.6     | 2026-02-25 | —       | Mobile framework confirmed as Flutter. MA-01 updated, MA-01a added for BLE library. Glossary updated. |
