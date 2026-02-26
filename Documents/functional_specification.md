@@ -87,7 +87,12 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 | SA-03 | Pressure readings shall be expressed in kPa (absolute) and converted to inHg for display.    | High     |
 | SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.           | Medium   |
 | SA-05 | The firmware shall detect and flag out-of-range sensor readings.                              | Medium   |
-| SA-06 | Sensor type and interface (analog ADC, I²C, SPI) shall be documented as a hardware TBD.      | High     |
+| SA-06 | The pressure sensor shall be the **NXP MPXH6115AC6U** (Freescale MPXH6115A series). It is an analog output, absolute pressure sensor with an operating range of **15 to 115 kPa**. | High     |
+| SA-07 | The sensor interface is **analog voltage output**. The ESP32 ADC shall be used to sample V_OUT on each sensor. | High     |
+| SA-08 | The sensor requires a **5.0 V supply** (4.75–5.25 V). A 5 V rail shall be provided on the PCB for all sensors. | High     |
+| SA-09 | The sensor output ranges from ~0.2 V (15 kPa) to ~4.7 V (115 kPa). A **resistor voltage divider** shall scale V_OUT to the ESP32 ADC input range (0–3.3 V) on each sensor channel. | High     |
+| SA-10 | The firmware shall apply the sensor transfer function **V_OUT = V_S × (0.009 × P − 0.095)** (rearranged for P) when converting ADC counts to kPa. | High     |
+| SA-11 | The firmware shall account for the voltage divider ratio when computing the actual V_OUT from the ADC reading. | High     |
 
 ### 6.2 Wireless Communication
 
@@ -160,7 +165,7 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 | #  | Question                                                          | Owner              | Target Date |
 |----|-------------------------------------------------------------------|--------------------|-------------|
 | 1  | **Wireless transport:** BLE vs. Wi-Fi — evaluate range, power, and pairing UX. | Hardware / Firmware | TBD |
-| 2  | **Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range. | Hardware Designer | TBD |
+| ~~2~~ | ~~**Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range.~~ | ~~Hardware Designer~~ | **Resolved 2026-02-25** — NXP MPXH6115AC6U, analog output, 15–115 kPa, 5 V supply. Voltage divider required for ESP32 ADC (see SA-06 to SA-11). |
 | ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~ | ~~End User / PM~~ | **Resolved 2026-02-25** — min 1, max 4, primary use case 4. |
 | 4  | **Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native). | Mobile Developer | TBD |
 | 5  | **Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned. | End User | TBD |
@@ -187,3 +192,4 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 |---------|------------|---------|----------------|
 | 0.1     | 2026-02-25 | —       | Initial draft  |
 | 0.2     | 2026-02-25 | —       | SA-01 updated: sensor count confirmed as min 1, max 4, primary use case 4 |
+| 0.3     | 2026-02-25 | —       | SA-06 to SA-11 added: sensor confirmed as NXP MPXH6115AC6U, analog interface, 5 V supply, voltage divider requirement, transfer function |
