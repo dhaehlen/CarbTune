@@ -3,7 +3,7 @@
 
 | Field        | Value                        |
 |--------------|------------------------------|
-| Version      | 0.1 (Draft)                  |
+| Version      | 0.8 (Draft)                  |
 | Date         | 2026-02-25                   |
 | Status       | In Review                    |
 
@@ -56,13 +56,13 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carburett
 ┌──────────────────────────────────────┐
 │             Engine Bay               │
 │                                      │
-│  [Pressure Sensor(s)]                │
-│       │  (analog / I²C / SPI)        │
+│  [NXP MPXH6115AC6U × 1–4]           │
+│       │  (analog voltage output)     │
 │       ▼                              │
 │  [ESP32 Microcontroller]             │
 │       │                              │
-│       │  Wireless Link               │
-│       │  (BLE or Wi-Fi — TBD)        │
+│       │  BLE (primary)               │
+│       │  Wi-Fi web UI (stretch)      │
 └───────┼──────────────────────────────┘
         │
         ▼
