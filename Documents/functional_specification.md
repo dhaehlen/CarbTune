@@ -143,7 +143,7 @@ BLE 5.0 with 2M PHY (available on ESP32-S3 and later variants) raises the practi
 | WC-01 | The ESP32 shall advertise as a BLE peripheral and expose a GATT notify characteristic for pressure data. | High    |
 | WC-02 | The ESP32 shall request a BLE connection interval of 7.5–15 ms to meet the end-to-end latency requirement. | High  |
 | WC-03 | The ESP32 shall negotiate an MTU sufficient to carry a full 4-sensor data packet without fragmentation. | High     |
-| WC-04 | The data packet shall include: timestamp (ms), sensor ID, pressure value (kPa), and status flag.        | High     |
+| WC-04 | The data packet shall include: timestamp (ms), per-sensor pressure values (kPa) and status flags, and calculated RPM. | High     |
 | WC-05 | End-to-end latency from sensor read to phone display shall be ≤ 200 ms.                                 | Medium   |
 | WC-06 | The connection shall tolerate temporary signal loss of up to 2 s and auto-reconnect.                    | Medium   |
 | WC-07 | The protocol shall be versioned to allow firmware and app updates independently.                        | Low      |
@@ -169,6 +169,7 @@ BLE 5.0 with 2M PHY (available on ESP32-S3 and later variants) raises the practi
 | LD-05 | When multiple sensors are connected, the app shall display readings side-by-side for balance/sync tuning. | Medium |
 | LD-06 | The app shall highlight readings that are outside user-defined target ranges (e.g. colour coding).      | Medium   |
 | LD-07 | The display shall remain readable in bright sunlight (high-contrast mode or brightness control).        | Low      |
+| LD-08 | The app shall display the calculated engine RPM as a numerical readout alongside the vacuum gauges.     | Medium   |
 
 ### 6.5 Mobile Application — Data Logging
 
@@ -178,7 +179,7 @@ BLE 5.0 with 2M PHY (available on ESP32-S3 and later variants) raises the practi
 | DL-02 | Log files shall be stored locally on the phone in a standard format (CSV or JSON).                     | High     |
 | DL-03 | The user shall be able to review past sessions as a graph and numerical summary.                        | Medium   |
 | DL-04 | Log files shall be exportable via standard OS share sheet (email, AirDrop, etc.).                       | Medium   |
-| DL-05 | Minimum recorded fields per sample: timestamp, sensor ID, pressure (kPa), unit display value.          | High     |
+| DL-05 | Minimum recorded fields per sample: timestamp, sensor ID, pressure (kPa), unit display value, calculated RPM. | High     |
 
 ### 6.6 Mobile Application — Tuning Guidance
 
@@ -187,6 +188,36 @@ BLE 5.0 with 2M PHY (available on ESP32-S3 and later variants) raises the practi
 | TG-01 | The app shall ship with a default target vacuum range of **16–24 cmHg** (Honda CB400F baseline). The user shall be able to override the target range per sensor for other engine configurations. | Medium   |
 | TG-02 | The app shall provide a visual indicator (e.g. progress bar or needle zone) showing how far off-target the reading is. | Medium |
 | TG-03 | A sync view (for multi-sensor setups) shall show the difference between sensors to assist balancing.   | Medium   |
+
+### 6.7 Engine Calculations — RPM
+
+Engine RPM shall be derived from the intake vacuum pulse signal detected in the MAP sensor data. No additional sensor or ignition tap is required.
+
+**Principle:** On a 4-stroke 4-cylinder engine, each intake stroke produces a detectable vacuum drop in the carburetor throat. With cylinders firing 90° apart, 4 pulses occur per 2 crank revolutions. Measuring the inter-pulse timing gives engine speed.
+
+**Timing resolution analysis at 500 Hz (2 ms per sample):**
+
+| RPM  | Rev period | Samples/rev | Inter-pulse period | ±1 sample error (raw) | ±1 sample error (8-pulse avg) |
+|------|------------|-------------|--------------------|-----------------------|-------------------------------|
+| 1000 | 60 ms      | 30          | 15 ms              | ±67 RPM               | ±8 RPM                        |
+| 3000 | 20 ms      | 10          | 5 ms               | ±200 RPM              | ±25 RPM                       |
+| 6000 | 10 ms      | 5           | 2.5 ms             | ±400 RPM              | ±50 RPM                       |
+
+A rolling average over 8 pulse periods gives acceptable accuracy across the tuning RPM range (idle to ~4000 RPM). Accuracy is best at idle and low RPM — exactly where carburettor balancing takes place.
+
+**Known limitations:**
+- Pulse amplitude varies with throttle position; detection threshold must be adaptive.
+- Rapid throttle changes or very low RPM (<500) may produce unreliable readings.
+- The calculated RPM is a firmware-side estimate; it is not a substitute for a dedicated tachometer signal.
+
+| ID     | Requirement                                                                                                  | Priority |
+|--------|--------------------------------------------------------------------------------------------------------------|----------|
+| EC-01  | The firmware shall detect intake vacuum pulses in the MAP sensor signal by identifying threshold-crossing events on the rate of pressure change (dP/dt). | High     |
+| EC-02  | The pulse detection threshold shall be adaptive, adjusting to the recent peak-to-peak signal amplitude to remain robust across varying throttle positions. | Medium   |
+| EC-03  | The firmware shall calculate RPM using a rolling average of the most recent **8 inter-pulse periods** across all active sensors. | High     |
+| EC-04  | RPM shall be calculated as: `RPM = (4 × 60) / (N_cylinders × T_avg_pulse)` where T_avg_pulse is the mean inter-pulse period in seconds. | High     |
+| EC-05  | The firmware shall flag the RPM value as invalid when fewer than 2 consecutive pulses have been detected within the last 500 ms. | Medium   |
+| EC-06  | The calculated RPM shall be included in each BLE data packet (see WC-04).                                    | High     |
 
 ---
 
@@ -251,3 +282,4 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | 0.5     | 2026-02-25 | —       | Target engine confirmed as Honda CB400F. SA-03 updated: default display unit cmHg. TG-01 updated: default target range 16–24 cmHg. Background section updated. |
 | 0.6     | 2026-02-25 | —       | Mobile framework confirmed as Flutter. MA-01 updated, MA-01a added for BLE library. Glossary updated. |
 | 0.7     | 2026-02-25 | —       | SA-02 revised: minimum 200 Hz, target 500 Hz. Nyquist and BLE bandwidth rationale added as design note under SA-02. |
+| 0.8     | 2026-02-25 | —       | Section 6.7 added: RPM calculation from MAP pulse detection (EC-01 to EC-06). WC-04 updated to include RPM in packet. LD-08 and DL-05 updated. |
