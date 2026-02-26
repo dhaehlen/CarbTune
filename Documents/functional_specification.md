@@ -96,16 +96,17 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 
 ### 6.2 Wireless Communication
 
-> **Decision Pending:** The wireless transport (BLE vs. Wi-Fi) is not yet decided. Both options are documented below. A final decision shall be made during hardware design review.
+> **Decision: BLE selected** as the primary wireless transport. BLE provides sufficient bandwidth for 4 sensors at 50 Hz (~48 kbps), keeps the phone connected to its normal Wi-Fi network, and offers simpler auto-reconnect behaviour. The firmware shall request a short BLE connection interval (7.5–15 ms) to meet the latency requirement.
 
 | ID    | Requirement                                                                                             | Priority |
 |-------|---------------------------------------------------------------------------------------------------------|----------|
-| WC-01 | **[BLE option]** The ESP32 shall advertise as a BLE peripheral and expose a GATT characteristic for pressure data. | High |
-| WC-02 | **[Wi-Fi option]** The ESP32 shall host a WebSocket server and stream pressure data to connected clients. | High |
-| WC-03 | The data packet shall include: timestamp (ms), sensor ID, pressure value (kPa), and status flag.        | High     |
-| WC-04 | End-to-end latency from sensor read to phone display shall be ≤ 200 ms.                                 | Medium   |
-| WC-05 | The connection shall tolerate temporary signal loss of up to 2 s and auto-reconnect.                    | Medium   |
-| WC-06 | The protocol shall be versioned to allow firmware and app updates independently.                        | Low      |
+| WC-01 | The ESP32 shall advertise as a BLE peripheral and expose a GATT notify characteristic for pressure data. | High    |
+| WC-02 | The ESP32 shall request a BLE connection interval of 7.5–15 ms to meet the end-to-end latency requirement. | High  |
+| WC-03 | The ESP32 shall negotiate an MTU sufficient to carry a full 4-sensor data packet without fragmentation. | High     |
+| WC-04 | The data packet shall include: timestamp (ms), sensor ID, pressure value (kPa), and status flag.        | High     |
+| WC-05 | End-to-end latency from sensor read to phone display shall be ≤ 200 ms.                                 | Medium   |
+| WC-06 | The connection shall tolerate temporary signal loss of up to 2 s and auto-reconnect.                    | Medium   |
+| WC-07 | The protocol shall be versioned to allow firmware and app updates independently.                        | Low      |
 
 ### 6.3 Mobile Application — General
 
@@ -148,7 +149,17 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 
 ---
 
-## 7. Non-Functional Requirements
+## 7. Stretch Goals
+
+Stretch goals are desirable features that are out of scope for the initial release but should be considered during architecture and firmware design to avoid closing off future implementation.
+
+| ID    | Goal                                                                                                    |
+|-------|---------------------------------------------------------------------------------------------------------|
+| SG-01 | **Wi-Fi diagnostic web UI:** The ESP32 shall optionally host a lightweight web page over Wi-Fi (AP mode) that displays live sensor readings in a browser. This provides a fallback diagnostic tool without requiring the mobile app to be installed. The BLE primary transport shall remain unaffected when this mode is active. |
+
+---
+
+## 8. Non-Functional Requirements
 
 | ID    | Requirement                                                                                             |
 |-------|---------------------------------------------------------------------------------------------------------|
@@ -160,11 +171,11 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 
 ---
 
-## 8. Open Questions & Decisions Required
+## 9. Open Questions & Decisions Required
 
 | #  | Question                                                          | Owner              | Target Date |
 |----|-------------------------------------------------------------------|--------------------|-------------|
-| 1  | **Wireless transport:** BLE vs. Wi-Fi — evaluate range, power, and pairing UX. | Hardware / Firmware | TBD |
+| ~~1~~ | ~~**Wireless transport:** BLE vs. Wi-Fi — evaluate range, power, and pairing UX.~~ | ~~Hardware / Firmware~~ | **Resolved 2026-02-25** — BLE selected. Wi-Fi web UI added as stretch goal SG-01. See WC-01 to WC-07. |
 | ~~2~~ | ~~**Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range.~~ | ~~Hardware Designer~~ | **Resolved 2026-02-25** — NXP MPXH6115AC6U, analog output, 15–115 kPa, 5 V supply. Voltage divider required for ESP32 ADC (see SA-06 to SA-11). |
 | ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~ | ~~End User / PM~~ | **Resolved 2026-02-25** — min 1, max 4, primary use case 4. |
 | 4  | **Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native). | Mobile Developer | TBD |
@@ -172,7 +183,7 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 
 ---
 
-## 9. Glossary
+## 10. Glossary
 
 | Term  | Definition                                                                 |
 |-------|----------------------------------------------------------------------------|
@@ -186,10 +197,11 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 
 ---
 
-## 10. Revision History
+## 11. Revision History
 
 | Version | Date       | Author  | Notes          |
 |---------|------------|---------|----------------|
 | 0.1     | 2026-02-25 | —       | Initial draft  |
 | 0.2     | 2026-02-25 | —       | SA-01 updated: sensor count confirmed as min 1, max 4, primary use case 4 |
 | 0.3     | 2026-02-25 | —       | SA-06 to SA-11 added: sensor confirmed as NXP MPXH6115AC6U, analog interface, 5 V supply, voltage divider requirement, transfer function |
+| 0.4     | 2026-02-25 | —       | WC section updated: BLE selected as primary transport, WC-01 to WC-07 revised. Section 7 (Stretch Goals) added with SG-01 Wi-Fi web UI fallback. Sections renumbered. |
