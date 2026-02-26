@@ -82,7 +82,7 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 
 | ID    | Requirement                                                                                   | Priority |
 |-------|-----------------------------------------------------------------------------------------------|----------|
-| SA-01 | The system shall support a configurable number of MAP/vacuum sensors (minimum 1, target TBD). | High     |
+| SA-01 | The system shall support 1 to 4 MAP/vacuum sensors. The primary use case is 4 sensors (one per carburetor). | High     |
 | SA-02 | Each sensor shall be sampled at a minimum rate of 10 Hz; target ≥ 50 Hz.                      | High     |
 | SA-03 | Pressure readings shall be expressed in kPa (absolute) and converted to inHg for display.    | High     |
 | SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.           | Medium   |
@@ -161,7 +161,7 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 |----|-------------------------------------------------------------------|--------------------|-------------|
 | 1  | **Wireless transport:** BLE vs. Wi-Fi — evaluate range, power, and pairing UX. | Hardware / Firmware | TBD |
 | 2  | **Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range. | Hardware Designer | TBD |
-| 3  | **Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations. | End User / PM | TBD |
+| ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~ | ~~End User / PM~~ | **Resolved 2026-02-25** — min 1, max 4, primary use case 4. |
 | 4  | **Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native). | Mobile Developer | TBD |
 | 5  | **Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned. | End User | TBD |
 
@@ -186,3 +186,4 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 | Version | Date       | Author  | Notes          |
 |---------|------------|---------|----------------|
 | 0.1     | 2026-02-25 | —       | Initial draft  |
+| 0.2     | 2026-02-25 | —       | SA-01 updated: sensor count confirmed as min 1, max 4, primary use case 4 |
