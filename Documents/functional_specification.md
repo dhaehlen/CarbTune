@@ -85,7 +85,7 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carburett
 | ID    | Requirement                                                                                   | Priority |
 |-------|-----------------------------------------------------------------------------------------------|----------|
 | SA-01 | The system shall support 1 to 4 MAP/vacuum sensors. The primary use case is 4 sensors (one per carburetor). | High     |
-| SA-02 | Each sensor shall be sampled at a minimum rate of 10 Hz; target ≥ 50 Hz.                      | High     |
+| SA-02 | Each sensor shall be sampled at a minimum rate of **200 Hz**; target **500 Hz**.              | High     |
 | SA-03 | Pressure readings shall be stored internally as kPa (absolute) and converted to the user's chosen display unit (cmHg, inHg, kPa, mbar). The default display unit shall be **cmHg**. | High     |
 | SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.           | Medium   |
 | SA-05 | The firmware shall detect and flag out-of-range sensor readings.                              | Medium   |
@@ -96,9 +96,47 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carburett
 | SA-10 | The firmware shall apply the sensor transfer function **V_OUT = V_S × (0.009 × P − 0.095)** (rearranged for P) when converting ADC counts to kPa. | High     |
 | SA-11 | The firmware shall account for the voltage divider ratio when computing the actual V_OUT from the ADC reading. | High     |
 
+#### SA-02 Design Rationale — Sampling Rate
+
+The original target of 50 Hz was revised upward following analysis of the primary use case engine (Honda CB400F, 4-cylinder 4-stroke) at the target tuning RPM of ~3000.
+
+**Intake pulse frequency at 3000 RPM:**
+- Crank speed: 3000 RPM = 50 rev/sec
+- 4-stroke cycle: each cylinder fires once every 2 revolutions → 25 firings/sec per cylinder
+- 4 cylinders, evenly spaced (90° apart): one intake event every 90° of crank rotation
+- Intake pulse frequency = 25 × 4 = **100 Hz**
+
+**Nyquist analysis:**
+
+| Sample rate | Samples/revolution @ 3000 RPM | Samples/intake pulse cycle | Assessment |
+|---|---|---|---|
+| 50 Hz  | 1   | 0.5 | Below Nyquist — aliasing, one measurement per full crank rotation |
+| 100 Hz | 2   | 1   | At Nyquist limit — marginal, no headroom for averaging |
+| 200 Hz | 4   | 2   | Minimum practical — 4 samples per revolution for averaging |
+| 500 Hz | 10  | 5   | Target — meaningful rolling average, captures dynamic events (throttle blips) |
+| 1000 Hz| 20  | 10  | Excellent, but approaches BLE 4.2 bandwidth ceiling (see below) |
+
+At 50 Hz, the system was sampling at exactly the crank rotation rate — one sample per revolution, below the Nyquist limit for intake pulse events. This is insufficient for reliable averaging and dynamic response at the tuning RPM.
+
+**BLE bandwidth at higher sample rates:**
+
+Packet structure (4 sensors bundled per timestamp): 4 bytes timestamp + 4 × (4 bytes pressure + 1 byte status) = 24 bytes payload + ~7 bytes BLE/ATT framing = **~31 bytes per packet**.
+
+| Sample rate | Data rate (4 sensors) | % of BLE 4.2 practical bandwidth (~200 kbps) |
+|---|---|---|
+| 200 Hz  | ~50 kbps  | 25% — comfortable |
+| 500 Hz  | ~124 kbps | 62% — comfortable |
+| 1000 Hz | ~248 kbps | >100% — exceeds BLE 4.2 limit |
+
+BLE 5.0 with 2M PHY (available on ESP32-S3 and later variants) raises the practical ceiling to ~1.3 Mbps, making 1000 Hz viable if required in future. Hardware selection should account for this.
+
+**Conclusion:** Minimum 200 Hz, target 500 Hz. The ESP32 ADC can sustain 4 × 500 Hz = 2000 samples/sec without difficulty. BLE bandwidth is not a constraint at these rates on BLE 4.2 or 5.0.
+
+---
+
 ### 6.2 Wireless Communication
 
-> **Decision: BLE selected** as the primary wireless transport. BLE provides sufficient bandwidth for 4 sensors at 50 Hz (~48 kbps), keeps the phone connected to its normal Wi-Fi network, and offers simpler auto-reconnect behaviour. The firmware shall request a short BLE connection interval (7.5–15 ms) to meet the latency requirement.
+> **Decision: BLE selected** as the primary wireless transport. BLE provides sufficient bandwidth for 4 sensors at up to 500 Hz (~124 kbps, 62% of BLE 4.2 capacity), keeps the phone connected to its normal Wi-Fi network, and offers simpler auto-reconnect behaviour. The firmware shall request a short BLE connection interval (7.5–15 ms) to meet the latency requirement.
 
 | ID    | Requirement                                                                                             | Priority |
 |-------|---------------------------------------------------------------------------------------------------------|----------|
@@ -212,3 +250,4 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | 0.4     | 2026-02-25 | —       | WC section updated: BLE selected as primary transport, WC-01 to WC-07 revised. Section 7 (Stretch Goals) added with SG-01 Wi-Fi web UI fallback. Sections renumbered. |
 | 0.5     | 2026-02-25 | —       | Target engine confirmed as Honda CB400F. SA-03 updated: default display unit cmHg. TG-01 updated: default target range 16–24 cmHg. Background section updated. |
 | 0.6     | 2026-02-25 | —       | Mobile framework confirmed as Flutter. MA-01 updated, MA-01a added for BLE library. Glossary updated. |
+| 0.7     | 2026-02-25 | —       | SA-02 revised: minimum 200 Hz, target 500 Hz. Nyquist and BLE bandwidth rationale added as design note under SA-02. |
