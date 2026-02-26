@@ -19,6 +19,8 @@ This document describes the functional requirements for a wireless engine-tuning
 
 Accurate carburetor tuning requires real-time feedback on the vacuum level present in the intake tract. Traditional vacuum gauges are analogue, single-point, and inconvenient to read while riding or during bench tuning. This system replaces the analogue gauge with a digital, wireless sensor node that provides live data, logging, and analysis on a smartphone.
 
+The initial target engine is the **Honda CB400F** (four-cylinder, four-carburettor). The expected balanced idle vacuum for this engine is **16–24 cmHg** (approximately 98.1–99.2 kPa absolute). This range serves as the factory default target in the mobile app and the basis for sensor range validation.
+
 ---
 
 ## 3. Scope
@@ -84,7 +86,7 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 |-------|-----------------------------------------------------------------------------------------------|----------|
 | SA-01 | The system shall support 1 to 4 MAP/vacuum sensors. The primary use case is 4 sensors (one per carburetor). | High     |
 | SA-02 | Each sensor shall be sampled at a minimum rate of 10 Hz; target ≥ 50 Hz.                      | High     |
-| SA-03 | Pressure readings shall be expressed in kPa (absolute) and converted to inHg for display.    | High     |
+| SA-03 | Pressure readings shall be stored internally as kPa (absolute) and converted to the user's chosen display unit (cmHg, inHg, kPa, mbar). The default display unit shall be **cmHg**. | High     |
 | SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.           | Medium   |
 | SA-05 | The firmware shall detect and flag out-of-range sensor readings.                              | Medium   |
 | SA-06 | The pressure sensor shall be the **NXP MPXH6115AC6U** (Freescale MPXH6115A series). It is an analog output, absolute pressure sensor with an operating range of **15 to 115 kPa**. | High     |
@@ -143,7 +145,7 @@ Accurate carburetor tuning requires real-time feedback on the vacuum level prese
 
 | ID    | Requirement                                                                                             | Priority |
 |-------|---------------------------------------------------------------------------------------------------------|----------|
-| TG-01 | The user shall be able to set a target vacuum range per sensor.                                         | Medium   |
+| TG-01 | The app shall ship with a default target vacuum range of **16–24 cmHg** (Honda CB400F baseline). The user shall be able to override the target range per sensor for other engine configurations. | Medium   |
 | TG-02 | The app shall provide a visual indicator (e.g. progress bar or needle zone) showing how far off-target the reading is. | Medium |
 | TG-03 | A sync view (for multi-sensor setups) shall show the difference between sensors to assist balancing.   | Medium   |
 
@@ -179,7 +181,7 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | ~~2~~ | ~~**Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range.~~ | ~~Hardware Designer~~ | **Resolved 2026-02-25** — NXP MPXH6115AC6U, analog output, 15–115 kPa, 5 V supply. Voltage divider required for ESP32 ADC (see SA-06 to SA-11). |
 | ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~ | ~~End User / PM~~ | **Resolved 2026-02-25** — min 1, max 4, primary use case 4. |
 | 4  | **Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native). | Mobile Developer | TBD |
-| 5  | **Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned. | End User | TBD |
+| ~~5~~ | ~~**Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned.~~ | ~~End User~~ | **Resolved 2026-02-25** — Honda CB400F, target 16–24 cmHg (~98.1–99.2 kPa absolute). Set as app default in TG-01. |
 
 ---
 
@@ -205,3 +207,4 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | 0.2     | 2026-02-25 | —       | SA-01 updated: sensor count confirmed as min 1, max 4, primary use case 4 |
 | 0.3     | 2026-02-25 | —       | SA-06 to SA-11 added: sensor confirmed as NXP MPXH6115AC6U, analog interface, 5 V supply, voltage divider requirement, transfer function |
 | 0.4     | 2026-02-25 | —       | WC section updated: BLE selected as primary transport, WC-01 to WC-07 revised. Section 7 (Stretch Goals) added with SG-01 Wi-Fi web UI fallback. Sections renumbered. |
+| 0.5     | 2026-02-25 | —       | Target engine confirmed as Honda CB400F. SA-03 updated: default display unit cmHg. TG-01 updated: default target range 16–24 cmHg. Background section updated. |
