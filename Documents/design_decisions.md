@@ -304,8 +304,76 @@ The CB400F is the immediate use case driving this project. Its expected balanced
 
 ---
 
+## ADR-008 — Microcontroller Variant and ADC Architecture
+
+| Field   | Value              |
+|---------|--------------------|
+| Date    | 2026-02-25         |
+| Status  | **Accepted**       |
+| Refs    | FSD SA-07, SA-09, SA-12 |
+
+### Context
+The ESP32's internal ADC has well-documented weaknesses: significant non-linearity (±2–3 kPa error in 11dB attenuation mode), ~9–10 ENOB effective resolution, temperature sensitivity, and a conflict between ADC2 channels and Wi-Fi. A review was triggered to determine whether the ADC was adequate for reliable pressure measurement and whether a different microcontroller should be considered.
+
+### Options Considered
+
+**Option A — ESP32 (original) with internal ADC**
+- No additional hardware cost or complexity
+- ADC non-linearity ±2.8 cmHg across the 8 cmHg target range — marginal
+- Systematic errors partially cancel for relative (sync) measurements
+- Requires software calibration (`esp_adc_cal`) and per-channel offset correction
+- ADC2 channels cannot be used while Wi-Fi is active; all 4 channels must land on ADC1
+- Adequate for prototype/proof-of-concept; marginal for a refined tool
+
+**Option B — ESP32 (original) with external SPI ADC (selected)**
+- Retains the familiar ESP32 ecosystem (Arduino/IDF, BLE, Wi-Fi)
+- Offloads ADC work to a dedicated chip with far better linearity and noise performance
+- Good external ADCs (e.g. ADS8688) support split AVDD 5 V / DVDD 3.3 V — sensor connects directly without a voltage divider, simplifying the PCB
+- SPI interface is straightforward on the ESP32; well-documented libraries available
+- Small added BOM cost; accessible to hobbyist builders
+- Retains Wi-Fi for SG-01 stretch goal
+
+**Option C — ESP32-S3 with external SPI ADC**
+- Adds BLE 5.0 (2M PHY, higher bandwidth ceiling)
+- Different pinout and GPIO mapping from original ESP32 — not a drop-in replacement
+- Requires updated PCB layout and pin assignment review
+- Higher cost; less widely available in hobbyist form (e.g. dev boards)
+- Assumption that "upgrading to S3 is straightforward" is recorded here as **unverified** — it requires a new PCB spin and firmware pin remapping at minimum
+- Deferred: if BLE 5.0 bandwidth becomes necessary, this is the natural upgrade path
+
+**Option D — nRF52840**
+- Native BLE 5.0, better internal ADC than ESP32
+- No Wi-Fi — eliminates SG-01 stretch goal without an additional module
+- Different SDK/toolchain (Zephyr or nRF SDK); higher learning curve for hobbyist context
+- Rejected on ecosystem and Wi-Fi grounds
+
+**Option E — STM32WB55**
+- Dual-core (application + BLE coprocessor), BLE 5.0, good ADC
+- No Wi-Fi; complex development environment
+- Rejected: highest complexity, loses hobbyist accessibility
+
+### Decision
+**ESP32 (original) with external SPI ADC (Option B).**
+
+### Rationale
+- Keeps the project accessible to hobbyist builders — the ESP32 has the largest community, most tutorials, and widest dev board availability
+- External SPI ADC resolves the ADC quality issue without changing the MCU
+- Preferred ADC architecture: split AVDD (5 V analogue) / DVDD (3.3 V digital), which eliminates the voltage divider on sensor channels and reduces per-channel component count
+- Retains Wi-Fi for the SG-01 stretch goal
+- BLE 4.2 bandwidth is sufficient at 500 Hz (124 kbps, 62% of capacity); BLE 5.0 is not required today
+
+### Consequences
+- External ADC part must be selected (open question 6 in FSD). Key criteria: ≥4 channels, ≥12-bit, ≥10 kSPS per channel, SPI interface, split AVDD 5 V / DVDD 3.3 V preferred.
+- If the chosen ADC does not support split supply, resistor voltage dividers are required on each sensor channel (SA-09).
+- SPI pin assignment on ESP32 must be confirmed during PCB design. The ESP32 has two SPI buses available (HSPI, VSPI) beyond the internal flash connection.
+- **S3 upgrade path note:** Moving to ESP32-S3 in future would require a new PCB layout, GPIO remapping, and verification that the same external ADC and BLE libraries are compatible. It is not a drop-in change. The decision to use original ESP32 is made with eyes open on this point.
+- Voltage divider requirements (SA-09, SA-11) are now conditional on ADC selection — to be confirmed when open question 6 is resolved.
+
+---
+
 ## Revision History
 
 | Version | Date       | Notes                        |
 |---------|------------|------------------------------|
 | 1.0     | 2026-02-25 | Initial document — ADR-001 to ADR-007 captured from project decisions to date |
+| 1.1     | 2026-02-25 | ADR-008 added: ESP32 (original) + external SPI ADC selected; S3 upgrade assumption documented |
