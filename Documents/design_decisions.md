@@ -371,9 +371,58 @@ The ESP32's internal ADC has well-documented weaknesses: significant non-lineari
 
 ---
 
+## ADR-009 — External ADC Part Selection (Prototype)
+
+| Field   | Value              |
+|---------|--------------------|
+| Date    | 2026-02-25         |
+| Status  | **Accepted**       |
+| Refs    | FSD SA-07 to SA-12 |
+
+### Context
+ADR-008 established that an external SPI ADC would replace the ESP32 internal ADC for the prototype. A specific part was needed to enable PCB design, firmware development, and BOM sourcing. Six candidates were evaluated.
+
+### Options Considered
+
+| Part | Bits | Ch | Supply | Voltage Divider | Package | Price | Hobbyist |
+|---|---|---|---|---|---|---|---|
+| MCP3204 | 12 | 4 | 3.3 V single | Yes | DIP-14 | ~£1 | ★★★★★ |
+| **MCP3208** | **12** | **8** | **3.3 V single** | **Yes** | **DIP-16** | **~£2** | **★★★★★** |
+| ADS8684 | 16 | 4 | Split 5V/3.3V | No | TSSOP-24 | ~£10 | ★★★ |
+| ADS8688 | 16 | 8 | Split 5V/3.3V | No | TSSOP-24 | ~£15 | ★★★ |
+| ADS131M04 | 24 | 4 | 3.3 V single | Yes | VQFN-32 | ~£12 | ★★ |
+| MCP3564R | 24 | 8 | 3.3 V single | Yes | SOIC-8 | ~£7 | ★★★ |
+
+### Decision
+**MCP3208 for the initial prototype.**
+
+### Rationale
+- **DIP-16 package** — breadboard and hand-solder friendly; ideal for a first prototype
+- **3.3 V supply** — SPI interface is directly compatible with the ESP32, no level shifting required
+- **8 channels** — 4 used for sensors, 4 spare for future expansion without changing the ADC
+- **100 kSPS** — 200× headroom over the 500 Hz per-channel target; ample room for oversampling
+- **Mature ecosystem** — extensive Arduino libraries, tutorials, and community support
+- **Cost** — ~£2, easily sourced from Mouser, Digikey, and hobbyist suppliers
+
+The main trade-off accepted is that the MCP3208's 3.3 V supply means the sensor V_OUT (0.2–4.7 V) requires a per-channel resistor voltage divider. This adds 8 resistors to the BOM (2 per channel × 4 channels) but keeps the design accessible and well understood.
+
+The ADS8688 remains the preferred choice for a refined or production version of the hardware (see ADR-008 consequences).
+
+### Consequences
+- **Voltage divider required** on each of the 4 active sensor channels.
+  - Values: R1 = 30 kΩ, R2 = 68 kΩ (ratio 0.694)
+  - Maximum divided voltage at 115 kPa: 4.7 × 0.694 = **3.26 V** (within 3.3 V ADC range, uses 98.8% of full scale)
+- **Firmware ADC-to-voltage conversion:** `V_OUT = (ADC_count / 4096) × 3.3 / 0.694`
+- **SPI clock:** must not exceed 2 MHz at 3.3 V supply (conservative; datasheet specifies 3.6 MHz at 5 V)
+- MCP3208 channels 0–3 assigned to the 4 pressure sensors; channels 4–7 reserved for future use
+- Resistor tolerances (typically ±1–5%) will introduce small per-channel offset errors; firmware per-channel calibration (SA-04) should be used to compensate
+
+---
+
 ## Revision History
 
 | Version | Date       | Notes                        |
 |---------|------------|------------------------------|
 | 1.0     | 2026-02-25 | Initial document — ADR-001 to ADR-007 captured from project decisions to date |
 | 1.1     | 2026-02-25 | ADR-008 added: ESP32 (original) + external SPI ADC selected; S3 upgrade assumption documented |
+| 1.2     | 2026-02-25 | ADR-009 added: MCP3208 selected for prototype ADC; divider values and firmware formula documented |

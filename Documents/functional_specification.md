@@ -3,7 +3,7 @@
 
 | Field        | Value                        |
 |--------------|------------------------------|
-| Version      | 0.9 (Draft)                  |
+| Version      | 1.0 (Draft)                  |
 | Date         | 2026-02-25                   |
 | Status       | In Review                    |
 
@@ -90,12 +90,12 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carburett
 | SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.           | Medium   |
 | SA-05 | The firmware shall detect and flag out-of-range sensor readings.                              | Medium   |
 | SA-06 | The pressure sensor shall be the **NXP MPXH6115AC6U** (Freescale MPXH6115A series). It is an analog output, absolute pressure sensor with an operating range of **15 to 115 kPa**. | High     |
-| SA-07 | Sensor V_OUT shall be sampled by an **external SPI ADC** rather than the ESP32 internal ADC. The external ADC shall provide a minimum of 4 single-ended input channels. Specific part TBD (see open question 6). | High     |
-| SA-08 | The sensor requires a **5.0 V supply** (4.75–5.25 V). A 5 V rail shall be provided on the PCB for all sensors. | High     |
-| SA-09 | The external ADC shall be selected with a **5 V analogue supply (AVDD)** and **3.3 V digital supply (DVDD)** where supported, allowing direct connection of sensor V_OUT (0.2–4.7 V) without a voltage divider. If the chosen ADC does not support split supply, a resistor voltage divider shall be added on each sensor channel. | High     |
+| SA-07 | Sensor V_OUT shall be sampled by a **Microchip MCP3208** external SPI ADC (12-bit, 8-channel, single supply 2.7–5.5 V). The MCP3208 shall be powered at **3.3 V**, making its SPI interface directly compatible with the ESP32 with no level shifting required. | High     |
+| SA-08 | The pressure sensors require a **5.0 V supply** (4.75–5.25 V). A 5 V rail shall be provided on the PCB for all sensors. The MCP3208 is powered separately at 3.3 V. | High     |
+| SA-09 | The MCP3208 input range at 3.3 V supply is **0–3.3 V**. A resistor voltage divider shall be fitted on each sensor channel to scale V_OUT (0.2–4.7 V) into this range. Recommended values: **R1 = 30 kΩ, R2 = 68 kΩ** (divider ratio 0.694; max divided voltage at 115 kPa = 3.26 V, using 98.8% of ADC range). | High     |
 | SA-10 | The firmware shall apply the sensor transfer function **V_OUT = V_S × (0.009 × P − 0.095)** (rearranged for P) when converting ADC counts to kPa. | High     |
-| SA-11 | The firmware shall account for any voltage divider ratio (if fitted) when computing actual V_OUT from the ADC reading. | High     |
-| SA-12 | The external ADC shall communicate with the ESP32 via **SPI**. The ADC digital interface (DVDD) shall be 3.3 V to be directly compatible with the ESP32 SPI pins without level shifting. | High     |
+| SA-11 | The firmware shall recover actual V_OUT from the MCP3208 ADC count using: **V_OUT = (ADC_count / 4096) × 3.3 / 0.694** before applying the transfer function. | High     |
+| SA-12 | The MCP3208 shall communicate with the ESP32 via SPI (mode 0,0 or 1,1). SPI clock shall not exceed **2 MHz** at 3.3 V supply. The 4 active sensor channels shall use MCP3208 channels 0–3; channels 4–7 are reserved for future expansion. | High     |
 
 #### SA-02 Design Rationale — Sampling Rate
 
@@ -253,7 +253,7 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~ | ~~End User / PM~~ | **Resolved 2026-02-25** — min 1, max 4, primary use case 4. |
 | ~~4~~ | ~~**Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native).~~ | ~~Mobile Developer~~ | **Resolved 2026-02-25** — Flutter selected. See MA-01 and MA-01a. |
 | ~~5~~ | ~~**Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned.~~ | ~~End User~~ | **Resolved 2026-02-25** — Honda CB400F, target 16–24 cmHg (~98.1–99.2 kPa absolute). Set as app default in TG-01. |
-| 6  | **External ADC selection:** Choose SPI ADC part. Prefer split AVDD (5 V) / DVDD (3.3 V) to avoid voltage divider on sensor channels. Minimum 4 channels, minimum 12-bit, minimum 10 kSPS per channel. | Hardware Designer | TBD |
+| ~~6~~ | ~~**External ADC selection:** Choose SPI ADC part. Prefer split AVDD (5 V) / DVDD (3.3 V) to avoid voltage divider on sensor channels. Minimum 4 channels, minimum 12-bit, minimum 10 kSPS per channel.~~ | ~~Hardware Designer~~ | **Resolved 2026-02-25** — MCP3208 selected for prototype. 3.3 V supply, voltage divider required (R1=30 kΩ, R2=68 kΩ). See SA-07 to SA-12 and ADR-009. |
 
 ---
 
@@ -286,3 +286,4 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | 0.7     | 2026-02-25 | —       | SA-02 revised: minimum 200 Hz, target 500 Hz. Nyquist and BLE bandwidth rationale added as design note under SA-02. |
 | 0.8     | 2026-02-25 | —       | Section 6.7 added: RPM calculation from MAP pulse detection (EC-01 to EC-06). WC-04 updated to include RPM in packet. LD-08 and DL-05 updated. |
 | 0.9     | 2026-02-25 | —       | SA-07 to SA-12 revised: external SPI ADC adopted in place of ESP32 internal ADC. Split AVDD/DVDD preference documented. Open question 6 added for ADC part selection. |
+| 1.0     | 2026-02-25 | —       | MCP3208 selected as ADC for prototype (SA-07 to SA-12 updated with part specifics, divider values, firmware formula). All open questions resolved. |
