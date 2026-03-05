@@ -19,7 +19,7 @@ This document describes the functional requirements for a wireless engine-tuning
 
 Accurate carburetor tuning requires real-time feedback on the vacuum level present in the intake tract. Traditional vacuum gauges are analogue, single-point, and inconvenient to read while riding or during bench tuning. This system replaces the analogue gauge with a digital, wireless sensor node that provides live data, logging, and analysis on a smartphone.
 
-The initial target engine is the **Honda CB400F** (four-cylinder, four-carburettor). The expected balanced idle vacuum for this engine is **16–24 cmHg** (approximately 98.1–99.2 kPa absolute). This range serves as the factory default target in the mobile app and the basis for sensor range validation.
+The initial target engine is the **Honda CB400F** (four-cylinder, four-carburetor). The expected balanced idle vacuum for this engine is **16–24 cmHg** (approximately 98.1–99.2 kPa absolute). This range serves as the factory default target in the mobile app and the basis for sensor range validation.
 
 ---
 
@@ -56,7 +56,7 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carburett
 ┌──────────────────────────────────────┐
 │             Engine Bay               │
 │                                      │
-│  [NXP MPXH6115AC6U × 1–4]           │
+│  [NXP MPXH6115AC6U × 1–4]            │
 │       │  (analog voltage output)     │
 │       ▼                              │
 │  [ESP32 Microcontroller]             │
@@ -82,113 +82,75 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carburett
 
 ### 6.1 Sensor Acquisition (ESP32 Firmware)
 
-| ID    | Requirement                                                                                   | Priority |
-|-------|-----------------------------------------------------------------------------------------------|----------|
-| SA-01 | The system shall support 1 to 4 MAP/vacuum sensors. The primary use case is 4 sensors (one per carburetor). | High     |
-| SA-02 | Each sensor shall be sampled at a minimum rate of **200 Hz**; target **500 Hz**.              | High     |
-| SA-03 | Pressure readings shall be stored internally as kPa (absolute) and converted to the user's chosen display unit (cmHg, inHg, kPa, mbar). The default display unit shall be **cmHg**. | High     |
-| SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.           | Medium   |
-| SA-05 | The firmware shall detect and flag out-of-range sensor readings.                              | Medium   |
-| SA-06 | The pressure sensor shall be the **NXP MPXH6115AC6U** (Freescale MPXH6115A series). It is an analog output, absolute pressure sensor with an operating range of **15 to 115 kPa**. | High     |
-| SA-07 | Sensor V_OUT shall be sampled by a **Microchip MCP3208** external SPI ADC (12-bit, 8-channel, single supply 2.7–5.5 V). The MCP3208 shall be powered at **3.3 V**, making its SPI interface directly compatible with the ESP32 with no level shifting required. | High     |
-| SA-08 | The pressure sensors require a **5.0 V supply** (4.75–5.25 V). A 5 V rail shall be provided on the PCB for all sensors. The MCP3208 is powered separately at 3.3 V. | High     |
+| ID    | Requirement                                                                                                                                                                                                                                                                                                    | Priority |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| SA-01 | The system shall support 1 to 4 MAP/vacuum sensors. The primary use case is 4 sensors (one per carburetor).                                                                                                                                                                                                    | High     |
+| SA-02 | Each sensor shall be sampled at a minimum rate of **200 Hz**; target **500 Hz**.                                                                                                                                                                                                                               | High     |
+| SA-03 | Pressure readings shall be stored internally as kPa (absolute) and converted to the user's chosen display unit (cmHg, inHg, kPa, mbar). The default display unit shall be **cmHg**.                                                                                                                            | High     |
+| SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.                                                                                                                                                                                                                            | Medium   |
+| SA-05 | The firmware shall detect and flag out-of-range sensor readings.                                                                                                                                                                                                                                               | Medium   |
+| SA-06 | The pressure sensor shall be the **NXP MPXH6115AC6U** (Freescale MPXH6115A series). It is an analog output, absolute pressure sensor with an operating range of **15 to 115 kPa** (~11 - 86 cmMg).                                                                                                             | High     |
+| SA-07 | Sensor V_OUT shall be sampled by a **Microchip MCP3208** external SPI ADC (12-bit, 8-channel, single supply 2.7–5.5 V). The MCP3208 shall be powered at **3.3 V**, making its SPI interface directly compatible with the ESP32 with no level shifting required.                                                | High     |
+| SA-08 | The pressure sensors require a **5.0 V supply** (4.75–5.25 V). A 5 V rail shall be provided on the PCB for all sensors. The MCP3208 is powered separately at 3.3 V.                                                                                                                                            | High     |
 | SA-09 | The MCP3208 input range at 3.3 V supply is **0–3.3 V**. A resistor voltage divider shall be fitted on each sensor channel to scale V_OUT (0.2–4.7 V) into this range. Recommended values: **R1 = 30 kΩ, R2 = 68 kΩ** (divider ratio 0.694; max divided voltage at 115 kPa = 3.26 V, using 98.8% of ADC range). | High     |
-| SA-10 | The firmware shall apply the sensor transfer function **V_OUT = V_S × (0.009 × P − 0.095)** (rearranged for P) when converting ADC counts to kPa. | High     |
-| SA-11 | The firmware shall recover actual V_OUT from the MCP3208 ADC count using: **V_OUT = (ADC_count / 4096) × 3.3 / 0.694** before applying the transfer function. | High     |
-| SA-12 | The MCP3208 shall communicate with the ESP32 via SPI (mode 0,0 or 1,1). SPI clock shall not exceed **2 MHz** at 3.3 V supply. The 4 active sensor channels shall use MCP3208 channels 0–3; channels 4–7 are reserved for future expansion. | High     |
-
-#### SA-02 Design Rationale — Sampling Rate
-
-The original target of 50 Hz was revised upward following analysis of the primary use case engine (Honda CB400F, 4-cylinder 4-stroke) at the target tuning RPM of ~3000.
-
-**Intake pulse frequency at 3000 RPM:**
-- Crank speed: 3000 RPM = 50 rev/sec
-- 4-stroke cycle: each cylinder fires once every 2 revolutions → 25 firings/sec per cylinder
-- 4 cylinders, evenly spaced (90° apart): one intake event every 90° of crank rotation
-- Intake pulse frequency = 25 × 4 = **100 Hz**
-
-**Nyquist analysis:**
-
-| Sample rate | Samples/revolution @ 3000 RPM | Samples/intake pulse cycle | Assessment |
-|---|---|---|---|
-| 50 Hz  | 1   | 0.5 | Below Nyquist — aliasing, one measurement per full crank rotation |
-| 100 Hz | 2   | 1   | At Nyquist limit — marginal, no headroom for averaging |
-| 200 Hz | 4   | 2   | Minimum practical — 4 samples per revolution for averaging |
-| 500 Hz | 10  | 5   | Target — meaningful rolling average, captures dynamic events (throttle blips) |
-| 1000 Hz| 20  | 10  | Excellent, but approaches BLE 4.2 bandwidth ceiling (see below) |
-
-At 50 Hz, the system was sampling at exactly the crank rotation rate — one sample per revolution, below the Nyquist limit for intake pulse events. This is insufficient for reliable averaging and dynamic response at the tuning RPM.
-
-**BLE bandwidth at higher sample rates:**
-
-Packet structure (4 sensors bundled per timestamp): 4 bytes timestamp + 4 × (4 bytes pressure + 1 byte status) = 24 bytes payload + ~7 bytes BLE/ATT framing = **~31 bytes per packet**.
-
-| Sample rate | Data rate (4 sensors) | % of BLE 4.2 practical bandwidth (~200 kbps) |
-|---|---|---|
-| 200 Hz  | ~50 kbps  | 25% — comfortable |
-| 500 Hz  | ~124 kbps | 62% — comfortable |
-| 1000 Hz | ~248 kbps | >100% — exceeds BLE 4.2 limit |
-
-BLE 5.0 with 2M PHY (available on ESP32-S3 and later variants) raises the practical ceiling to ~1.3 Mbps, making 1000 Hz viable if required in future. Hardware selection should account for this.
-
-**Conclusion:** Minimum 200 Hz, target 500 Hz. The ESP32 ADC can sustain 4 × 500 Hz = 2000 samples/sec without difficulty. BLE bandwidth is not a constraint at these rates on BLE 4.2 or 5.0.
+| SA-10 | The firmware shall apply the sensor transfer function **V_OUT = V_S × (0.009 × P − 0.095)** (rearranged for P) when converting ADC counts to kPa.                                                                                                                                                              | High     |
+| SA-11 | The firmware shall recover actual V_OUT from the MCP3208 ADC count using: **V_OUT = (ADC_count / 4096) × 3.3 / 0.694** before applying the transfer function.                                                                                                                                                  | High     |
+| SA-12 | The MCP3208 shall communicate with the ESP32 via SPI (mode 0,0 or 1,1). SPI clock shall not exceed **2 MHz** at 3.3 V supply. The 4 active sensor channels shall use MCP3208 channels 0–3; channels 4–7 are reserved for future expansion.                                                                     | High     |
 
 ---
 
 ### 6.2 Wireless Communication
 
-> **Decision: BLE selected** as the primary wireless transport. BLE provides sufficient bandwidth for 4 sensors at up to 500 Hz (~124 kbps, 62% of BLE 4.2 capacity), keeps the phone connected to its normal Wi-Fi network, and offers simpler auto-reconnect behaviour. The firmware shall request a short BLE connection interval (7.5–15 ms) to meet the latency requirement.
-
-| ID    | Requirement                                                                                             | Priority |
-|-------|---------------------------------------------------------------------------------------------------------|----------|
-| WC-01 | The ESP32 shall advertise as a BLE peripheral and expose a GATT notify characteristic for pressure data. | High    |
-| WC-02 | The ESP32 shall request a BLE connection interval of 7.5–15 ms to meet the end-to-end latency requirement. | High  |
-| WC-03 | The ESP32 shall negotiate an MTU sufficient to carry a full 4-sensor data packet without fragmentation. | High     |
+| ID    | Requirement                                                                                                           | Priority |
+| ----- | --------------------------------------------------------------------------------------------------------------------- | -------- |
+| WC-01 | The ESP32 shall advertise as a BLE peripheral and expose a GATT notify characteristic for pressure data.              | High     |
+| WC-02 | The ESP32 shall request a BLE connection interval of 7.5–15 ms to meet the end-to-end latency requirement.            | High     |
+| WC-03 | The ESP32 shall negotiate an MTU sufficient to carry a full 4-sensor data packet without fragmentation.               | High     |
 | WC-04 | The data packet shall include: timestamp (ms), per-sensor pressure values (kPa) and status flags, and calculated RPM. | High     |
-| WC-05 | End-to-end latency from sensor read to phone display shall be ≤ 200 ms.                                 | Medium   |
-| WC-06 | The connection shall tolerate temporary signal loss of up to 2 s and auto-reconnect.                    | Medium   |
-| WC-07 | The protocol shall be versioned to allow firmware and app updates independently.                        | Low      |
+| WC-05 | End-to-end latency from sensor read to phone display shall be ≤ 200 ms.                                               | Medium   |
+| WC-06 | The connection shall tolerate temporary signal loss of up to 2 s and auto-reconnect.                                  | Medium   |
+| WC-07 | The protocol shall be versioned to allow firmware and app updates independently.                                      | Low      |
 
 ### 6.3 Mobile Application — General
 
-| ID    | Requirement                                                                                             | Priority |
-|-------|---------------------------------------------------------------------------------------------------------|----------|
-| MA-01 | The app shall be built using **Flutter** (Dart) targeting iOS (≥ 16) and Android (≥ 10) from a single codebase. | High     |
+| ID     | Requirement                                                                                                            | Priority |
+| ------ | ---------------------------------------------------------------------------------------------------------------------- | -------- |
+| MA-01  | The app shall be built using **Flutter** (Dart) targeting iOS (≥ 16) and Android (≥ 10) from a single codebase.        | High     |
 | MA-01a | BLE communication shall use the **flutter_blue_plus** package (or equivalent actively maintained Flutter BLE library). | High     |
-| MA-02 | The app shall discover and pair with the ESP32 device automatically.                                    | High     |
-| MA-03 | The app shall display connection status (connected / disconnected / searching).                         | High     |
-| MA-04 | The app shall function without an internet connection.                                                  | High     |
+| MA-02  | The app shall discover and pair with the ESP32 device automatically.                                                   | High     |
+| MA-03  | The app shall display connection status (connected / disconnected / searching).                                        | High     |
+| MA-04  | The app shall function without an internet connection.                                                                 | High     |
 
 ### 6.4 Mobile Application — Live Display
 
-| ID    | Requirement                                                                                             | Priority |
-|-------|---------------------------------------------------------------------------------------------------------|----------|
-| LD-01 | The app shall display a real-time vacuum gauge for each connected sensor.                               | High     |
-| LD-02 | Gauge units shall be selectable: kPa, inHg, cmHg, mbar.                                                | Medium   |
-| LD-03 | The app shall display a numerical readout alongside the gauge.                                          | High     |
-| LD-04 | The app shall display a live scrolling graph (time vs. pressure) with a configurable time window.       | High     |
-| LD-05 | When multiple sensors are connected, the app shall display readings side-by-side for balance/sync tuning. | Medium |
-| LD-06 | The app shall highlight readings that are outside user-defined target ranges (e.g. colour coding).      | Medium   |
-| LD-07 | The display shall remain readable in bright sunlight (high-contrast mode or brightness control).        | Low      |
-| LD-08 | The app shall display the calculated engine RPM as a numerical readout alongside the vacuum gauges.     | Medium   |
+| ID    | Requirement                                                                                               | Priority |
+| ----- | --------------------------------------------------------------------------------------------------------- | -------- |
+| LD-01 | The app shall display a real-time vacuum gauge for each connected sensor.                                 | High     |
+| LD-02 | Gauge units shall be selectable: kPa, inHg, cmHg, mbar.                                                   | Medium   |
+| LD-03 | The app shall display a numerical readout alongside the gauge.                                            | High     |
+| LD-04 | The app shall display a live scrolling graph (time vs. pressure) with a configurable time window.         | High     |
+| LD-05 | When multiple sensors are connected, the app shall display readings side-by-side for balance/sync tuning. | Medium   |
+| LD-06 | The app shall highlight readings that are outside user-defined target ranges (e.g. colour coding).        | Medium   |
+| LD-07 | The display shall remain readable in bright sunlight (high-contrast mode or brightness control).          | Low      |
+| LD-08 | The app shall display the calculated engine RPM as a numerical readout alongside the vacuum gauges.       | Medium   |
 
 ### 6.5 Mobile Application — Data Logging
 
-| ID    | Requirement                                                                                             | Priority |
-|-------|---------------------------------------------------------------------------------------------------------|----------|
-| DL-01 | The user shall be able to start and stop named logging sessions from within the app.                    | High     |
-| DL-02 | Log files shall be stored locally on the phone in a standard format (CSV or JSON).                     | High     |
-| DL-03 | The user shall be able to review past sessions as a graph and numerical summary.                        | Medium   |
-| DL-04 | Log files shall be exportable via standard OS share sheet (email, AirDrop, etc.).                       | Medium   |
+| ID    | Requirement                                                                                                   | Priority |
+| ----- | ------------------------------------------------------------------------------------------------------------- | -------- |
+| DL-01 | The user shall be able to start and stop named logging sessions from within the app.                          | High     |
+| DL-02 | Log files shall be stored locally on the phone in a standard format (CSV or JSON).                            | High     |
+| DL-03 | The user shall be able to review past sessions as a graph and numerical summary.                              | Medium   |
+| DL-04 | Log files shall be exportable via standard OS share sheet (email, AirDrop, etc.).                             | Medium   |
 | DL-05 | Minimum recorded fields per sample: timestamp, sensor ID, pressure (kPa), unit display value, calculated RPM. | High     |
 
 ### 6.6 Mobile Application — Tuning Guidance
 
-| ID    | Requirement                                                                                             | Priority |
-|-------|---------------------------------------------------------------------------------------------------------|----------|
+| ID    | Requirement                                                                                                                                                                                      | Priority |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
 | TG-01 | The app shall ship with a default target vacuum range of **16–24 cmHg** (Honda CB400F baseline). The user shall be able to override the target range per sensor for other engine configurations. | Medium   |
-| TG-02 | The app shall provide a visual indicator (e.g. progress bar or needle zone) showing how far off-target the reading is. | Medium |
-| TG-03 | A sync view (for multi-sensor setups) shall show the difference between sensors to assist balancing.   | Medium   |
+| TG-02 | The app shall provide a visual indicator (e.g. progress bar or needle zone) showing how far off-target the reading is.                                                                           | Medium   |
+| TG-03 | A sync view (for multi-sensor setups) shall show the difference between sensors to assist balancing.                                                                                             | Medium   |
 
 ### 6.7 Engine Calculations — RPM
 
@@ -246,14 +208,14 @@ Stretch goals are desirable features that are out of scope for the initial relea
 
 ## 9. Open Questions & Decisions Required
 
-| #  | Question                                                          | Owner              | Target Date |
-|----|-------------------------------------------------------------------|--------------------|-------------|
-| ~~1~~ | ~~**Wireless transport:** BLE vs. Wi-Fi — evaluate range, power, and pairing UX.~~ | ~~Hardware / Firmware~~ | **Resolved 2026-02-25** — BLE selected. Wi-Fi web UI added as stretch goal SG-01. See WC-01 to WC-07. |
-| ~~2~~ | ~~**Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range.~~ | ~~Hardware Designer~~ | **Resolved 2026-02-25** — NXP MPXH6115AC6U, analog output, 15–115 kPa, 5 V supply. Voltage divider required for ESP32 ADC (see SA-06 to SA-11). |
-| ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~ | ~~End User / PM~~ | **Resolved 2026-02-25** — min 1, max 4, primary use case 4. |
-| ~~4~~ | ~~**Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native).~~ | ~~Mobile Developer~~ | **Resolved 2026-02-25** — Flutter selected. See MA-01 and MA-01a. |
-| ~~5~~ | ~~**Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned.~~ | ~~End User~~ | **Resolved 2026-02-25** — Honda CB400F, target 16–24 cmHg (~98.1–99.2 kPa absolute). Set as app default in TG-01. |
-| ~~6~~ | ~~**External ADC selection:** Choose SPI ADC part. Prefer split AVDD (5 V) / DVDD (3.3 V) to avoid voltage divider on sensor channels. Minimum 4 channels, minimum 12-bit, minimum 10 kSPS per channel.~~ | ~~Hardware Designer~~ | **Resolved 2026-02-25** — MCP3208 selected for prototype. 3.3 V supply, voltage divider required (R1=30 kΩ, R2=68 kΩ). See SA-07 to SA-12 and ADR-009. |
+| #     | Question                                                                                                                                                                                                  | Owner                   | Target Date                                                                                                                                            |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ~~1~~ | ~~**Wireless transport:** BLE vs. Wi-Fi — evaluate range, power, and pairing UX.~~                                                                                                                        | ~~Hardware / Firmware~~ | **Resolved 2026-02-25** — BLE selected. Wi-Fi web UI added as stretch goal SG-01. See WC-01 to WC-07.                                                  |
+| ~~2~~ | ~~**Sensor selection:** Identify MAP sensor part number, interface type (analog / I²C / SPI), and pressure range.~~                                                                                       | ~~Hardware Designer~~   | **Resolved 2026-02-25** — NXP MPXH6115AC6U, analog output, 15–115 kPa, 5 V supply. Voltage divider required for ESP32 ADC (see SA-06 to SA-11).        |
+| ~~3~~ | ~~**Number of sensors:** Confirm minimum and maximum sensor count for target engine configurations.~~                                                                                                     | ~~End User / PM~~       | **Resolved 2026-02-25** — min 1, max 4, primary use case 4.                                                                                            |
+| ~~4~~ | ~~**Mobile framework:** Native Swift/Kotlin vs. cross-platform (Flutter, React Native).~~                                                                                                                 | ~~Mobile Developer~~    | **Resolved 2026-02-25** — Flutter selected. See MA-01 and MA-01a.                                                                                      |
+| ~~5~~ | ~~**Target vacuum range:** Confirm typical MAP/vacuum values for the engine type being tuned.~~                                                                                                           | ~~End User~~            | **Resolved 2026-02-25** — Honda CB400F, target 16–24 cmHg (~98.1–99.2 kPa absolute). Set as app default in TG-01.                                      |
+| ~~6~~ | ~~**External ADC selection:** Choose SPI ADC part. Prefer split AVDD (5 V) / DVDD (3.3 V) to avoid voltage divider on sensor channels. Minimum 4 channels, minimum 12-bit, minimum 10 kSPS per channel.~~ | ~~Hardware Designer~~   | **Resolved 2026-02-25** — MCP3208 selected for prototype. 3.3 V supply, voltage divider required (R1=30 kΩ, R2=68 kΩ). See SA-07 to SA-12 and ADR-009. |
 
 ---
 

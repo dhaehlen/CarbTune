@@ -384,14 +384,14 @@ ADR-008 established that an external SPI ADC would replace the ESP32 internal AD
 
 ### Options Considered
 
-| Part | Bits | Ch | Supply | Voltage Divider | Package | Price | Hobbyist |
-|---|---|---|---|---|---|---|---|
-| MCP3204 | 12 | 4 | 3.3 V single | Yes | DIP-14 | ~£1 | ★★★★★ |
-| **MCP3208** | **12** | **8** | **3.3 V single** | **Yes** | **DIP-16** | **~£2** | **★★★★★** |
-| ADS8684 | 16 | 4 | Split 5V/3.3V | No | TSSOP-24 | ~£10 | ★★★ |
-| ADS8688 | 16 | 8 | Split 5V/3.3V | No | TSSOP-24 | ~£15 | ★★★ |
-| ADS131M04 | 24 | 4 | 3.3 V single | Yes | VQFN-32 | ~£12 | ★★ |
-| MCP3564R | 24 | 8 | 3.3 V single | Yes | SOIC-8 | ~£7 | ★★★ |
+| Part        | Bits   | Ch    | Supply           | Voltage Divider | Package    | Price   | Hobbyist  |
+| ----------- | ------ | ----- | ---------------- | --------------- | ---------- | ------- | --------- |
+| MCP3204     | 12     | 4     | 3.3 V single     | Yes             | DIP-14     | ~£1     | ★★★★★     |
+| **MCP3208** | **12** | **8** | **3.3 V single** | **Yes**         | **DIP-16** | **~£2** | **★★★★★** |
+| ADS8684     | 16     | 4     | Split 5V/3.3V    | No              | TSSOP-24   | ~£10    | ★★★       |
+| ADS8688     | 16     | 8     | Split 5V/3.3V    | No              | TSSOP-24   | ~£15    | ★★★       |
+| ADS131M04   | 24     | 4     | 3.3 V single     | Yes             | VQFN-32    | ~£12    | ★★        |
+| MCP3564R    | 24     | 8     | 3.3 V single     | Yes             | SOIC-8     | ~£7     | ★★★       |
 
 ### Decision
 **MCP3208 for the initial prototype.**
