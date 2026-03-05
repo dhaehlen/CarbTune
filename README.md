@@ -1,5 +1,4 @@
 # CarbTune
----
 
 This is a project I am using to learn. However, hopefully the final product is usable as a tool to help me tune
 my CB400F carburetors. Ideally the code and hardware will be able to tune carbs on other vehicles as well.
