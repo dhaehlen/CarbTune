@@ -126,7 +126,7 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carbureto
 | ID    | Requirement                                                                                               | Priority |
 | ----- | --------------------------------------------------------------------------------------------------------- | -------- |
 | LD-01 | The app shall display a real-time vacuum gauge for each connected sensor.                                 | High     |
-| LD-02 | Gauge units shall be selectable: kPa, inHg, cmHg, mbar.                                                   | Medium   |
+| LD-02 | Gauge units shall be selectable: kPa, PSI, inHg, cmHg, mbar.                                              | Medium   |
 | LD-03 | The app shall display a numerical readout alongside the gauge.                                            | High     |
 | LD-04 | The app shall display a live scrolling graph (time vs. pressure) with a configurable time window.         | High     |
 | LD-05 | When multiple sensors are connected, the app shall display readings side-by-side for balance/sync tuning. | Medium   |
@@ -166,7 +166,7 @@ Engine RPM shall be derived from the intake vacuum pulse signal detected in the 
 | 3000 | 20 ms      | 10          | 5 ms               | ±200 RPM              | ±25 RPM                       |
 | 6000 | 10 ms      | 5           | 2.5 ms             | ±400 RPM              | ±50 RPM                       |
 
-A rolling average over 8 pulse periods gives acceptable accuracy across the tuning RPM range (idle to ~4000 RPM). Accuracy is best at idle and low RPM — exactly where carburettor balancing takes place.
+A rolling average over 8 pulse periods gives acceptable accuracy across the tuning RPM range (idle to ~4000 RPM). Accuracy is best at idle and low RPM — exactly where carburetor balancing takes place.
 
 **Known limitations:**
 - Pulse amplitude varies with throttle position; detection threshold must be adaptive.
@@ -196,13 +196,13 @@ Stretch goals are desirable features that are out of scope for the initial relea
 
 ## 8. Non-Functional Requirements
 
-| ID    | Requirement                                                                                             |
-|-------|---------------------------------------------------------------------------------------------------------|
-| NF-01 | The ESP32 module shall operate from 5 V or 3.3 V supplied by the vehicle's electrical system.          |
-| NF-02 | ESP32 firmware shall be updateable over-the-air (OTA) without requiring specialist equipment.          |
-| NF-03 | The system shall be resilient to vibration and electromagnetic interference typical of an engine bay.  |
-| NF-04 | The mobile app binary size shall not exceed 50 MB.                                                     |
-| NF-05 | All stored data shall remain on the user's device; no data is transmitted to external servers.         |
+| ID    | Requirement                                                                                           |
+| ----- | ----------------------------------------------------------------------------------------------------- |
+| NF-01 | The ESP32 module shall operate from 5 V or 3.3 V supplied by the vehicle's electrical system.         |
+| NF-02 | ESP32 firmware shall be updateable over-the-air (OTA) without requiring specialist equipment.         |
+| NF-03 | The system shall be resilient to vibration and electromagnetic interference typical of an engine bay. |
+| NF-04 | The mobile app binary size shall not exceed 50 MB.                                                    |
+| NF-05 | All stored data shall remain on the user's device; no data is transmitted to external servers.        |
 
 ---
 
