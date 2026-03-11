@@ -42,6 +42,36 @@ All documentation lives in `Documents/`:
 
 ## Development Notes
 
-No build system, package manager, or test infrastructure exists yet. When source code is added, update this file with build/test/lint commands.
+### Flutter App (`app/carbtune/`)
+
+Flutter SDK is installed at `~/development/flutter`. Ensure it is on your PATH:
+```bash
+export PATH="$HOME/development/flutter/bin:$PATH"
+```
+
+**Common commands** (run from `app/carbtune/`):
+
+| Task | Command |
+|------|---------|
+| Get dependencies | `flutter pub get` |
+| Run on connected device / emulator | `flutter run` |
+| Run on a specific device | `flutter run -d <device-id>` |
+| List available devices | `flutter devices` |
+| Build Android APK (debug) | `flutter build apk --debug` |
+| Build Android APK (release) | `flutter build apk --release` |
+| Build iOS (requires macOS + Xcode) | `flutter build ios --release` |
+| Analyze for lint/type errors | `flutter analyze` |
+| Run tests | `flutter test` |
+| Format all Dart files | `dart format lib/` |
+| Upgrade dependencies | `flutter pub upgrade` |
+
+**First-time setup** (generates platform scaffolding without overwriting `lib/`):
+```bash
+cd app/carbtune
+flutter create . --project-name carbtune --org com.carbtune
+flutter pub get
+```
+
+**Android setup:** Android Studio or the Android command-line tools must be installed and `flutter doctor` must show no Android errors before building for Android.
 
 When editing the FSD or ADRs, maintain the existing requirement ID numbering (SA-xx, WC-xx, etc.) and ADR format (Status / Context / Decision / Consequences).
