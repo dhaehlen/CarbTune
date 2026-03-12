@@ -44,10 +44,20 @@ All documentation lives in `Documents/`:
 
 ### Flutter App (`app/carbtune/`)
 
-Flutter SDK is installed at `~/development/flutter`. Ensure it is on your PATH:
+Flutter SDK is installed at `~/development/flutter` and Android SDK at `~/development/android`. Both are on the PATH via `~/.bashrc` — open a new terminal or run `source ~/.bashrc` to pick them up.
+
 ```bash
+# Already in ~/.bashrc — no need to run manually after a new terminal
 export PATH="$HOME/development/flutter/bin:$PATH"
+export ANDROID_HOME="$HOME/development/android"
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
 ```
+
+**To deploy to a physical Android device:**
+1. Enable *Developer Options* on the phone (tap Build Number 7 times in Settings → About)
+2. Enable *USB Debugging* in Developer Options
+3. Connect via USB — run `flutter devices` to confirm it appears
+4. Run `flutter run` (auto-selects the device if only one is connected)
 
 **Common commands** (run from `app/carbtune/`):
 
@@ -72,6 +82,6 @@ flutter create . --project-name carbtune --org com.carbtune
 flutter pub get
 ```
 
-**Android setup:** Android Studio or the Android command-line tools must be installed and `flutter doctor` must show no Android errors before building for Android.
+**Android setup:** Complete — Android SDK 36 + build-tools 36.0.0 + platform-tools installed via command-line tools. `flutter doctor` shows Android toolchain ✓.
 
 When editing the FSD or ADRs, maintain the existing requirement ID numbering (SA-xx, WC-xx, etc.) and ADR format (Status / Context / Decision / Consequences).
