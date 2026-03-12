@@ -138,6 +138,17 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carbureto
 | LD-11 | The balance view shall display a user-adjustable target pressure line overlaid across all gauges. The line shall be draggable to any position within the gauge scale. Gauge bars shall be coloured to indicate whether the averaged reading is at or above the target (green) or below it (amber). | High     |
 | LD-12 | The displayed pressure value for each sensor shall be a rolling average over a configurable time window (default: **5 s**). This mimics the damping effect of a traditional plenum or damper valve, providing a steady reading suitable for tuning. The averaging window shall be user-adjustable at runtime via an in-app control without requiring an app restart. | High     |
 
+#### Unit Conversion Table
+
+This table documents the conversion factor for each unit from the default cmHg (centimeters of mercury).
+
+| Unit                   | Symbol | Conversion      |
+| ---------------------- | ------ | --------------- |
+| Inches of Mercury      | inHg   | cmHg / 2.54     |
+| Kilopascals            | kPa    | cmHg * 0.133322 |
+| Millibars              | mbar   | cmHg * 1.33322  |
+| Pounds per Square Inch | PSI    | cmHg * 0.019337 |
+
 ### 6.5 Mobile Application — Data Logging
 
 | ID    | Requirement                                                                                                   | Priority |
