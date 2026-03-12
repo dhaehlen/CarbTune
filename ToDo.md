@@ -10,6 +10,7 @@ Place to write down the things that pop into my head.
 - [ ] kPa might not make sense as a unit, maybe just Pa
 - [ ] mock up time/pressure graph
 - [ ] as part of the time pressure graph, add the instantaneous running average as a line across the chart.
+- [ ] handle cases where BLE packet protocol is not compatible with app gracefully
 
 ### Embedded Firmware
 
@@ -41,7 +42,6 @@ Place to write down the things that pop into my head.
 
 ## Overall Project
 
-- [ ] Create BOM
 
 ---
 ## Incomplete Functional Requirements

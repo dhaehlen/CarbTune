@@ -86,7 +86,7 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carbureto
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | SA-01 | The system shall support 1 to 4 MAP/vacuum sensors. The primary use case is 4 sensors (one per carburetor).                                                                                                                                                                                                    | High     |
 | SA-02 | Each sensor shall be sampled at a minimum rate of **200 Hz**; target **500 Hz**.                                                                                                                                                                                                                               | High     |
-| SA-03 | Pressure readings shall be stored internally as kPa (absolute) and converted to the user's chosen display unit (cmHg, inHg, kPa, mbar). The default display unit shall be **cmHg**.                                                                                                                            | High     |
+| SA-03 | The firmware shall convert each ADC reading to kPa absolute using the voltage-divider formula (SA-11) and sensor transfer function (SA-10), and transmit kPa in the BLE data packet. Pressure values shall be stored internally as kPa on both firmware and app. The app shall convert kPa to the user's chosen display unit (cmHg, inHg, kPa, mbar, PSI) at render time only. The default display unit shall be **cmHg**. See Section 6.3 for the full interface specification. | High     |
 | SA-04 | The firmware shall apply configurable sensor calibration offsets and scale factors.                                                                                                                                                                                                                            | Medium   |
 | SA-05 | The firmware shall detect and flag out-of-range sensor readings.                                                                                                                                                                                                                                               | Medium   |
 | SA-06 | The pressure sensor shall be the **NXP MPXH6115AC6U** (Freescale MPXH6115A series). It is an analog output, absolute pressure sensor with an operating range of **15 to 115 kPa** (~11 - 86 cmMg).                                                                                                             | High     |
@@ -106,12 +106,72 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carbureto
 | WC-01 | The ESP32 shall advertise as a BLE peripheral and expose a GATT notify characteristic for pressure data.              | High     |
 | WC-02 | The ESP32 shall request a BLE connection interval of 7.5–15 ms to meet the end-to-end latency requirement.            | High     |
 | WC-03 | The ESP32 shall negotiate an MTU sufficient to carry a full 4-sensor data packet without fragmentation.               | High     |
-| WC-04 | The data packet shall include: timestamp (ms), per-sensor pressure values (kPa) and status flags, and calculated RPM. | High     |
+| WC-04 | The data packet shall include: timestamp (ms), per-sensor pressure values (kPa absolute) and status flags, and calculated RPM. See Section 6.3 for the full packet specification. | High     |
 | WC-05 | End-to-end latency from sensor read to phone display shall be ≤ 200 ms.                                               | Medium   |
 | WC-06 | The connection shall tolerate temporary signal loss of up to 2 s and auto-reconnect.                                  | Medium   |
 | WC-07 | The protocol shall be versioned to allow firmware and app updates independently.                                      | Low      |
 
-### 6.3 Mobile Application — General
+---
+
+### 6.3 Hardware–App Interface
+
+This section defines the logical boundary between the ESP32 firmware and the mobile application: which unit conversions occur on each side, and the exact format of the BLE data packet.
+
+#### Unit Conversion Responsibilities
+
+The sensor outputs an analogue voltage. No pressure unit exists until the firmware applies the transfer function. The full conversion chain is:
+
+```
+ADC count
+  → [firmware SA-11] → V_OUT (V)
+  → [firmware SA-10] → kPa absolute
+  → [BLE packet]
+  → app (stored as kPa)
+  → [render time only] → user's chosen display unit
+```
+
+- **Firmware:** Converts ADC counts to kPa absolute. Has no knowledge of the user's display unit preference and shall not perform any further unit conversion.
+- **App:** Receives kPa absolute from the BLE packet, stores all pressure state internally in kPa, and converts to the user-selected display unit only at render time.
+
+#### BLE Packet Format
+
+Each BLE notification carries one packet with the following structure (little-endian, 29 bytes total):
+
+| Offset | Field              | Type    | Size | Description                                                                 |
+|--------|--------------------|---------|------|-----------------------------------------------------------------------------|
+| 0      | Protocol version   | uint8   | 1 B  | Fixed `0x01` for this revision. Increment on any breaking structural change. |
+| 1      | Timestamp          | uint32  | 4 B  | Milliseconds since device boot.                                              |
+| 5      | RPM                | float32 | 4 B  | Calculated engine RPM (EC-04). `NaN` = invalid / insufficient signal (EC-05). |
+| 9      | Sensor 0 pressure  | float32 | 4 B  | Absolute pressure in **kPa**.                                               |
+| 13     | Sensor 0 status    | uint8   | 1 B  | Bit flags — see table below.                                                |
+| 14     | Sensor 1 pressure  | float32 | 4 B  | kPa absolute.                                                               |
+| 18     | Sensor 1 status    | uint8   | 1 B  |                                                                             |
+| 19     | Sensor 2 pressure  | float32 | 4 B  | kPa absolute.                                                               |
+| 23     | Sensor 2 status    | uint8   | 1 B  |                                                                             |
+| 24     | Sensor 3 pressure  | float32 | 4 B  | kPa absolute.                                                               |
+| 28     | Sensor 3 status    | uint8   | 1 B  |                                                                             |
+
+**Sensor status byte (bit flags):**
+
+| Bit | Mask   | Meaning when set (1)                          |
+|-----|--------|-----------------------------------------------|
+| 0   | `0x01` | Sensor active and connected                   |
+| 1   | `0x02` | Reading out of range (SA-05)                  |
+| 2   | `0x04` | Sensor calibrating (SA-04)                    |
+| 3–7 | —      | Reserved; shall be `0`                        |
+
+If a sensor is inactive (bit 0 clear), the corresponding pressure field shall be set to `0.0`. The app shall not display or average readings from inactive sensors.
+
+| ID    | Requirement                                                                                                                                                           | Priority |
+|-------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
+| HI-01 | Firmware shall convert ADC readings to kPa absolute before transmission. No other pressure unit shall appear in the BLE packet.                                       | High     |
+| HI-02 | The BLE packet shall follow the structure defined in this section. Field order, types, sizes, and byte offsets are fixed for a given protocol version.                  | High     |
+| HI-03 | The app shall store all received pressure values internally in kPa. Conversion to display units (cmHg, inHg, kPa, mbar, PSI) shall occur only at render time.          | High     |
+| HI-04 | The protocol version byte shall be incremented on any breaking change to the packet structure. The app shall reject or gracefully handle packets with an unrecognised version byte. | Medium   |
+
+---
+
+### 6.4 Mobile Application — General
 
 | ID     | Requirement                                                                                                            | Priority |
 | ------ | ---------------------------------------------------------------------------------------------------------------------- | -------- |
@@ -121,7 +181,7 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carbureto
 | MA-03  | The app shall display connection status (connected / disconnected / searching).                                        | High     |
 | MA-04  | The app shall function without an internet connection.                                                                 | High     |
 
-### 6.4 Mobile Application — Live Display
+### 6.5 Mobile Application — Live Display
 
 | ID    | Requirement                                                                                               | Priority |
 | ----- | --------------------------------------------------------------------------------------------------------- | -------- |
@@ -149,7 +209,7 @@ This table documents the conversion factor for each unit from the default cmHg (
 | Millibars              | mbar   | cmHg * 1.33322  |
 | Pounds per Square Inch | PSI    | cmHg * 0.019337 |
 
-### 6.5 Mobile Application — Data Logging
+### 6.6 Mobile Application — Data Logging
 
 | ID    | Requirement                                                                                                   | Priority |
 | ----- | ------------------------------------------------------------------------------------------------------------- | -------- |
@@ -159,7 +219,7 @@ This table documents the conversion factor for each unit from the default cmHg (
 | DL-04 | Log files shall be exportable via standard OS share sheet (email, AirDrop, etc.).                             | Medium   |
 | DL-05 | Minimum recorded fields per sample: timestamp, sensor ID, pressure (kPa), unit display value, calculated RPM. | High     |
 
-### 6.6 Mobile Application — Tuning Guidance
+### 6.7 Mobile Application — Tuning Guidance
 
 | ID    | Requirement                                                                                                                                                                                      | Priority |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
@@ -167,7 +227,7 @@ This table documents the conversion factor for each unit from the default cmHg (
 | TG-02 | The app shall provide a visual indicator (e.g. progress bar or needle zone) showing how far off-target the reading is.                                                                           | Medium   |
 | TG-03 | A sync view (for multi-sensor setups) shall show the difference between sensors to assist balancing.                                                                                             | Medium   |
 
-### 6.7 Engine Calculations — RPM
+### 6.8 Engine Calculations — RPM
 
 Engine RPM shall be derived from the intake vacuum pulse signal detected in the MAP sensor data. No additional sensor or ignition tap is required.
 
@@ -265,3 +325,4 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | 0.9     | 2026-02-25 | —       | SA-07 to SA-12 revised: external SPI ADC adopted in place of ESP32 internal ADC. Split AVDD/DVDD preference documented. Open question 6 added for ADC part selection. |
 | 1.0     | 2026-02-25 | —       | MCP3208 selected as ADC for prototype (SA-07 to SA-12 updated with part specifics, divider values, firmware formula). All open questions resolved. |
 | 1.1     | 2026-03-12 | —       | LD-09 to LD-12 added: four linear bar gauges (LD-09), unit selector button and modal (LD-10), draggable target pressure line with colour-coded bars (LD-11), rolling average display with runtime-adjustable window (LD-12). Unit conversion factors section added. |
+| 1.2     | 2026-03-12 | —       | Section 6.3 (Hardware–App Interface) added: unit conversion responsibilities, BLE packet format (HI-01 to HI-04), sensor status byte definition. SA-03 updated to clarify kPa as the internal and wire unit; display conversion is app-side only. WC-04 updated to reference Section 6.3. Sections 6.3–6.7 renumbered to 6.4–6.8. |
