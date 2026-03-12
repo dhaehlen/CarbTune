@@ -1,5 +1,8 @@
-/// Pressure display units supported by the app (LD-02, SA-03).
-/// All internal values are stored as vacuum in cmHg.
+/// Pressure display units supported by the app (LD-02, HI-03).
+/// All internal pressure values are stored as kPa absolute.
+/// Display conversions in [fromKPa] express all units as vacuum below
+/// standard atmospheric (101.325 kPa), consistent with the FSD unit
+/// conversion table in Section 6.5.
 enum PressureUnit { cmHg, inHg, kPa, mbar, psi }
 
 extension PressureUnitExtension on PressureUnit {
@@ -11,14 +14,19 @@ extension PressureUnitExtension on PressureUnit {
         PressureUnit.psi => 'PSI',
       };
 
-  /// Convert a vacuum value from cmHg to this unit.
-  double fromCmHg(double cmHg) => switch (this) {
-        PressureUnit.cmHg => cmHg,
-        PressureUnit.inHg => cmHg / 2.54,
-        PressureUnit.kPa => cmHg * 0.133322,
-        PressureUnit.mbar => cmHg * 1.33322,
-        PressureUnit.psi => cmHg * 0.019337,
-      };
+  /// Convert an absolute pressure value from kPa to this display unit.
+  /// All units are expressed as vacuum below standard atmospheric (101.325 kPa).
+  double fromKPa(double kPa) {
+    const atm = 101.325; // standard atmospheric pressure in kPa
+    final vacuum = atm - kPa;
+    return switch (this) {
+      PressureUnit.cmHg => vacuum / 0.133322,
+      PressureUnit.inHg => vacuum / 0.338639, // = 2.54 × 0.133322 kPa/inHg
+      PressureUnit.kPa => vacuum,
+      PressureUnit.mbar => vacuum * 10.0,
+      PressureUnit.psi => vacuum * 0.145038,
+    };
+  }
 
   int get decimalPlaces => switch (this) {
         PressureUnit.cmHg => 1,
@@ -28,5 +36,5 @@ extension PressureUnitExtension on PressureUnit {
         PressureUnit.psi => 3,
       };
 
-  String format(double cmHg) => fromCmHg(cmHg).toStringAsFixed(decimalPlaces);
+  String format(double kPa) => fromKPa(kPa).toStringAsFixed(decimalPlaces);
 }

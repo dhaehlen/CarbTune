@@ -9,14 +9,14 @@ import '../models/sensor_data.dart';
 enum ConnectionStatus { disconnected, searching, connected }
 
 class AppState extends ChangeNotifier {
-  /// Gauge display range in cmHg vacuum.
-  static const double gaugeMin = 0.0;
-  static const double gaugeMax = 30.0;
+  /// Gauge display range in kPa absolute (spans 0–30 cmHg vacuum relative to 101.325 kPa atm).
+  static const double gaugeMinKPa = 97.325; // ≈ 30 cmHg vacuum
+  static const double gaugeMaxKPa = 101.325; // ≈ 0 cmHg vacuum (standard atmospheric)
 
   static const int sensorCount = 4;
 
-  /// Default target vacuum: mid-point of the CB400F balanced idle range (16–24 cmHg).
-  static const double defaultTargetCmHg = 20.0;
+  /// Default target: mid-point of the CB400F balanced idle range (16–24 cmHg ≈ 99.5–98.2 kPa).
+  static const double defaultTargetKPa = 98.659; // ≈ 20 cmHg vacuum
 
   /// Default averaging window in seconds (LD-12).
   /// Mimics the damping effect of a traditional plenum/damper valve.
@@ -27,25 +27,26 @@ class AppState extends ChangeNotifier {
   /// Always length == sensorCount. Values are rolling averages, not raw readings.
   List<SensorData> _sensors = List.generate(
     sensorCount,
-    (i) => SensorData(id: i, vacuumCmHg: 0),
+    (i) => SensorData(id: i, pressureKPa: gaugeMaxKPa),
   );
 
   PressureUnit _unit = PressureUnit.cmHg;
-  double _targetCmHg = defaultTargetCmHg;
+  double _targetKPa = defaultTargetKPa;
   double _rpm = 0.0;
 
   /// Rolling averaging window length in seconds (LD-12). Adjustable at runtime.
   double _averagingWindowSec = defaultAveragingWindowSec;
 
-  /// Per-sensor ring buffer: list of (timestamp_ms, raw_pressure_cmHg).
+  /// Per-sensor ring buffer: list of (timestamp_ms, raw_pressure_kPa).
   /// Used to compute the rolling average displayed on the gauges.
   final List<List<(int, double)>> _rawBuffers =
       List.generate(sensorCount, (_) => []);
 
   // ── Mock data ──────────────────────────────────────────────────────────────
-  // Slightly unbalanced base vacuum values to simulate real-world tuning.
+  // Slightly unbalanced base pressures (kPa abs) to simulate real-world tuning.
+  // Equivalent to [14.0, 16.5, 13.0, 15.5] cmHg vacuum.
   // TODO: replace _startMockStream with BLE data stream (MA-01a / WC-01).
-  final _baseValues = [14.0, 16.5, 13.0, 15.5];
+  final _baseValues = [99.458, 99.125, 99.592, 99.258];
   final _rng = Random();
   Timer? _mockTimer;
 
@@ -53,7 +54,7 @@ class AppState extends ChangeNotifier {
   ConnectionStatus get connectionStatus => _status;
   List<SensorData> get sensors => _sensors;
   PressureUnit get unit => _unit;
-  double get targetCmHg => _targetCmHg;
+  double get targetKPa => _targetKPa;
   double get rpm => _rpm;
   double get averagingWindowSec => _averagingWindowSec;
 
@@ -69,8 +70,8 @@ class AppState extends ChangeNotifier {
   }
 
   /// Called when the user drags the target pressure line on the gauge.
-  void setTarget(double cmHg) {
-    _targetCmHg = cmHg.clamp(gaugeMin, gaugeMax);
+  void setTarget(double kPa) {
+    _targetKPa = kPa.clamp(gaugeMinKPa, gaugeMaxKPa);
     notifyListeners();
   }
 
@@ -115,12 +116,12 @@ class AppState extends ChangeNotifier {
     _mockTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       // Record a raw reading for each sensor and expose the rolling average.
       for (var i = 0; i < sensorCount; i++) {
-        final noise = (_rng.nextDouble() - 0.5) * 1.2;
-        final raw = (_baseValues[i] + noise).clamp(gaugeMin, gaugeMax);
+        final noise = (_rng.nextDouble() - 0.5) * 0.160; // ≈ 1.2 cmHg in kPa
+        final raw = (_baseValues[i] + noise).clamp(gaugeMinKPa, gaugeMaxKPa);
         _recordRaw(i, raw);
       }
       _sensors = List.generate(sensorCount, (i) {
-        return SensorData(id: i, vacuumCmHg: _averaged(i));
+        return SensorData(id: i, pressureKPa: _averaged(i));
       });
       _rpm = 2300 + (_rng.nextDouble() - 0.5) * 150;
       notifyListeners();

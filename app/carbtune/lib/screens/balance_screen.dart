@@ -117,7 +117,7 @@ class _LandscapeLayout extends StatelessWidget {
                         ),
                       ),
                       ...List.generate(AppState.sensorCount, (i) {
-                        final pressure = state.sensors[i].vacuumCmHg;
+                        final pressure = state.sensors[i].pressureKPa;
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6),
@@ -156,13 +156,14 @@ class _PortraitGaugeAreaState extends State<_PortraitGaugeArea> {
 
   double _pressureFromLocalY(double localY) {
     final frac = (1.0 - localY / _h).clamp(0.0, 1.0);
-    return AppState.gaugeMin + frac * (AppState.gaugeMax - AppState.gaugeMin);
+    // frac=1 at top → gaugeMinKPa (max vacuum); frac=0 at bottom → gaugeMaxKPa (no vacuum).
+    return AppState.gaugeMaxKPa - frac * (AppState.gaugeMaxKPa - AppState.gaugeMinKPa);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
-    final targetFrac = _toFraction(state.targetCmHg);
+    final targetFrac = _toFraction(state.targetKPa);
 
     return LayoutBuilder(builder: (context, constraints) {
       _h = constraints.maxHeight;
@@ -189,8 +190,8 @@ class _PortraitGaugeAreaState extends State<_PortraitGaugeArea> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       child: _PortraitBar(
-                        pressure: state.sensors[i].vacuumCmHg,
-                        target: state.targetCmHg,
+                        pressure: state.sensors[i].pressureKPa,
+                        target: state.targetKPa,
                       ),
                     ),
                   );
@@ -235,13 +236,14 @@ class _LandscapeGaugeAreaState extends State<_LandscapeGaugeArea> {
 
   double _pressureFromLocalX(double localX) {
     final frac = (localX / _w).clamp(0.0, 1.0);
-    return AppState.gaugeMin + frac * (AppState.gaugeMax - AppState.gaugeMin);
+    // frac=0 at left → gaugeMaxKPa (no vacuum); frac=1 at right → gaugeMinKPa (max vacuum).
+    return AppState.gaugeMaxKPa - frac * (AppState.gaugeMaxKPa - AppState.gaugeMinKPa);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = widget.state;
-    final targetFrac = _toFraction(state.targetCmHg);
+    final targetFrac = _toFraction(state.targetKPa);
 
     return LayoutBuilder(builder: (context, constraints) {
       _w = constraints.maxWidth;
@@ -268,8 +270,8 @@ class _LandscapeGaugeAreaState extends State<_LandscapeGaugeArea> {
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: _LandscapeBar(
-                        pressure: state.sensors[i].vacuumCmHg,
-                        target: state.targetCmHg,
+                        pressure: state.sensors[i].pressureKPa,
+                        target: state.targetKPa,
                       ),
                     ),
                   );
@@ -310,7 +312,7 @@ class _PortraitBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final frac = _toFraction(pressure);
-    final color = pressure >= target ? _colorOnTarget : _colorBelowTarget;
+    final color = pressure <= target ? _colorOnTarget : _colorBelowTarget;
 
     return LayoutBuilder(builder: (context, constraints) {
       return Stack(
@@ -340,7 +342,7 @@ class _LandscapeBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final frac = _toFraction(pressure);
-    final color = pressure >= target ? _colorOnTarget : _colorBelowTarget;
+    final color = pressure <= target ? _colorOnTarget : _colorBelowTarget;
 
     return LayoutBuilder(builder: (context, constraints) {
       return Stack(
@@ -527,7 +529,7 @@ class _PortraitAvgRow extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
               child: _AvgLabel(
-                pressure: state.sensors[i].vacuumCmHg,
+                pressure: state.sensors[i].pressureKPa,
                 unit: state.unit,
               ),
             ),
@@ -579,7 +581,7 @@ class _DragHandle extends StatelessWidget {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Grid painter — draws scale lines across the gauge area.
-// Lines at every 5 cmHg between gaugeMin and gaugeMax.
+// Lines at every 5 cmHg (≈ 0.667 kPa) across the vacuum range.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _GridPainter extends CustomPainter {
@@ -592,9 +594,10 @@ class _GridPainter extends CustomPainter {
       ..color = Colors.grey.shade300
       ..strokeWidth = 0.8;
 
-    const step = 5.0;
-    var v = AppState.gaugeMin + step;
-    while (v <= AppState.gaugeMax) {
+    // Step every 5 cmHg (= 0.133322 × 5 ≈ 0.667 kPa) from atmospheric down to max vacuum.
+    const stepKPa = 5.0 * 0.133322;
+    var v = AppState.gaugeMaxKPa - stepKPa;
+    while (v >= AppState.gaugeMinKPa - 1e-9) {
       final frac = _toFraction(v);
       if (isPortrait) {
         final y = size.height * (1 - frac);
@@ -603,7 +606,7 @@ class _GridPainter extends CustomPainter {
         final x = size.width * frac;
         canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
       }
-      v += step;
+      v -= stepKPa;
     }
   }
 
@@ -618,6 +621,8 @@ class _GridPainter extends CustomPainter {
 const _colorOnTarget = Color(0xFF4CAF50); // green
 const _colorBelowTarget = Color(0xFFFFC107); // amber
 
-double _toFraction(double cmHg) =>
-    ((cmHg - AppState.gaugeMin) / (AppState.gaugeMax - AppState.gaugeMin))
+// Maps kPa absolute to a 0–1 fill fraction.
+// Lower kPa = more vacuum = higher fraction (taller bar in portrait, wider in landscape).
+double _toFraction(double kPa) =>
+    ((AppState.gaugeMaxKPa - kPa) / (AppState.gaugeMaxKPa - AppState.gaugeMinKPa))
         .clamp(0.0, 1.0);
