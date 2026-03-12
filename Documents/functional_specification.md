@@ -3,8 +3,8 @@
 
 | Field        | Value                        |
 |--------------|------------------------------|
-| Version      | 1.0 (Draft)                  |
-| Date         | 2026-02-25                   |
+| Version      | 1.1                          |
+| Date         | 2026-03-12                   |
 | Status       | In Review                    |
 
 ---
@@ -133,6 +133,10 @@ The initial target engine is the **Honda CB400F** (four-cylinder, four-carbureto
 | LD-06 | The app shall highlight readings that are outside user-defined target ranges (e.g. colour coding).        | Medium   |
 | LD-07 | The display shall remain readable in bright sunlight (high-contrast mode or brightness control).          | Low      |
 | LD-08 | The app shall display the calculated engine RPM as a numerical readout alongside the vacuum gauges.       | Medium   |
+| LD-09 | The balance view shall display four linear bar gauges arranged side by side — one per sensor. In portrait orientation the bars shall be vertical; in landscape orientation the bars shall be horizontal. The bar fill shall reflect the current (averaged) vacuum reading relative to a fixed scale (default 0–30 cmHg). | High     |
+| LD-10 | Gauge unit selection shall be accessible via a clearly labelled button showing the current unit. Tapping the button shall open a modal dialog listing all available units (see LD-02) as radio button options with Cancel and Confirm actions. The selection shall apply immediately to all gauges and readouts on confirm. | Medium   |
+| LD-11 | The balance view shall display a user-adjustable target pressure line overlaid across all gauges. The line shall be draggable to any position within the gauge scale. Gauge bars shall be coloured to indicate whether the averaged reading is at or above the target (green) or below it (amber). | High     |
+| LD-12 | The displayed pressure value for each sensor shall be a rolling average over a configurable time window (default: **5 s**). This mimics the damping effect of a traditional plenum or damper valve, providing a steady reading suitable for tuning. The averaging window shall be user-adjustable at runtime via an in-app control without requiring an app restart. | High     |
 
 ### 6.5 Mobile Application — Data Logging
 
@@ -249,3 +253,4 @@ Stretch goals are desirable features that are out of scope for the initial relea
 | 0.8     | 2026-02-25 | —       | Section 6.7 added: RPM calculation from MAP pulse detection (EC-01 to EC-06). WC-04 updated to include RPM in packet. LD-08 and DL-05 updated. |
 | 0.9     | 2026-02-25 | —       | SA-07 to SA-12 revised: external SPI ADC adopted in place of ESP32 internal ADC. Split AVDD/DVDD preference documented. Open question 6 added for ADC part selection. |
 | 1.0     | 2026-02-25 | —       | MCP3208 selected as ADC for prototype (SA-07 to SA-12 updated with part specifics, divider values, firmware formula). All open questions resolved. |
+| 1.1     | 2026-03-12 | —       | LD-09 to LD-12 added: four linear bar gauges (LD-09), unit selector button and modal (LD-10), draggable target pressure line with colour-coded bars (LD-11), rolling average display with runtime-adjustable window (LD-12). Unit conversion factors section added. |

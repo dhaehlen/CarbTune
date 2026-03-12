@@ -18,9 +18,13 @@ class AppState extends ChangeNotifier {
   /// Default target vacuum: mid-point of the CB400F balanced idle range (16–24 cmHg).
   static const double defaultTargetCmHg = 20.0;
 
+  /// Default averaging window in seconds (LD-12).
+  /// Mimics the damping effect of a traditional plenum/damper valve.
+  static const double defaultAveragingWindowSec = 5.0;
+
   ConnectionStatus _status = ConnectionStatus.disconnected;
 
-  /// Always length == sensorCount. Zero-valued until connected.
+  /// Always length == sensorCount. Values are rolling averages, not raw readings.
   List<SensorData> _sensors = List.generate(
     sensorCount,
     (i) => SensorData(id: i, vacuumCmHg: 0),
@@ -29,6 +33,14 @@ class AppState extends ChangeNotifier {
   PressureUnit _unit = PressureUnit.cmHg;
   double _targetCmHg = defaultTargetCmHg;
   double _rpm = 0.0;
+
+  /// Rolling averaging window length in seconds (LD-12). Adjustable at runtime.
+  double _averagingWindowSec = defaultAveragingWindowSec;
+
+  /// Per-sensor ring buffer: list of (timestamp_ms, raw_pressure_cmHg).
+  /// Used to compute the rolling average displayed on the gauges.
+  final List<List<(int, double)>> _rawBuffers =
+      List.generate(sensorCount, (_) => []);
 
   // ── Mock data ──────────────────────────────────────────────────────────────
   // Slightly unbalanced base vacuum values to simulate real-world tuning.
@@ -43,6 +55,7 @@ class AppState extends ChangeNotifier {
   PressureUnit get unit => _unit;
   double get targetCmHg => _targetCmHg;
   double get rpm => _rpm;
+  double get averagingWindowSec => _averagingWindowSec;
 
   AppState() {
     _simulateConnection();
@@ -61,6 +74,29 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Adjusts the rolling average window at runtime (LD-12).
+  /// Range: 0.5 – 30 s.
+  void setAveragingWindow(double seconds) {
+    _averagingWindowSec = seconds.clamp(0.5, 30.0);
+    notifyListeners();
+  }
+
+  // ── Rolling average helpers ────────────────────────────────────────────────
+
+  void _recordRaw(int sensorId, double pressureCmHg) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final buf = _rawBuffers[sensorId];
+    buf.add((now, pressureCmHg));
+    final cutoffMs = now - (_averagingWindowSec * 1000).round();
+    buf.removeWhere((e) => e.$1 < cutoffMs);
+  }
+
+  double _averaged(int sensorId) {
+    final buf = _rawBuffers[sensorId];
+    if (buf.isEmpty) return 0;
+    return buf.fold(0.0, (sum, e) => sum + e.$2) / buf.length;
+  }
+
   // ── Mock BLE simulation ────────────────────────────────────────────────────
 
   void _simulateConnection() {
@@ -77,10 +113,14 @@ class AppState extends ChangeNotifier {
 
   void _startMockStream() {
     _mockTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      _sensors = List.generate(sensorCount, (i) {
+      // Record a raw reading for each sensor and expose the rolling average.
+      for (var i = 0; i < sensorCount; i++) {
         final noise = (_rng.nextDouble() - 0.5) * 1.2;
-        final v = (_baseValues[i] + noise).clamp(gaugeMin, gaugeMax);
-        return SensorData(id: i, vacuumCmHg: v);
+        final raw = (_baseValues[i] + noise).clamp(gaugeMin, gaugeMax);
+        _recordRaw(i, raw);
+      }
+      _sensors = List.generate(sensorCount, (i) {
+        return SensorData(id: i, vacuumCmHg: _averaged(i));
       });
       _rpm = 2300 + (_rng.nextDouble() - 0.5) * 150;
       notifyListeners();

@@ -54,6 +54,8 @@ class _PortraitLayout extends StatelessWidget {
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
               const Spacer(),
+              _AvgWindowButton(seconds: state.averagingWindowSec),
+              const SizedBox(width: 8),
               _UnitButton(unit: state.unit),
             ],
           ),
@@ -90,7 +92,9 @@ class _LandscapeLayout extends StatelessWidget {
                 'RPM: ${state.rpm.toStringAsFixed(0)}',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              _AvgWindowButton(seconds: state.averagingWindowSec),
+              const SizedBox(width: 8),
               _UnitButton(unit: state.unit),
             ],
           ),
@@ -360,6 +364,125 @@ class _LandscapeBar extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared widgets
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Button showing the current averaging window. Tap to open an adjustment dialog (LD-12).
+class _AvgWindowButton extends StatelessWidget {
+  final double seconds;
+  const _AvgWindowButton({required this.seconds});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = seconds == seconds.truncateToDouble()
+        ? '${seconds.toInt()}s'
+        : '${seconds.toStringAsFixed(1)}s';
+
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        backgroundColor: Colors.blue.shade50,
+        foregroundColor: Colors.blue.shade800,
+        side: BorderSide(color: Colors.blue.shade400, width: 1.5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () => _showDialog(context),
+      child: Text('Avg $label', style: const TextStyle(fontWeight: FontWeight.bold)),
+    );
+  }
+
+  void _showDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => _AvgWindowDialog(initial: seconds),
+    );
+  }
+}
+
+class _AvgWindowDialog extends StatefulWidget {
+  final double initial;
+  const _AvgWindowDialog({required this.initial});
+
+  @override
+  State<_AvgWindowDialog> createState() => _AvgWindowDialogState();
+}
+
+class _AvgWindowDialogState extends State<_AvgWindowDialog> {
+  late double _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.initial;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Averaging Window', textAlign: TextAlign.center),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '${_value.toStringAsFixed(1)} seconds',
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Controls display smoothing — like a physical damper valve.\nLonger = steadier reading.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          Slider(
+            value: _value,
+            min: 0.5,
+            max: 30.0,
+            divisions: 59, // 0.5 s steps
+            activeColor: Colors.blue,
+            onChanged: (v) => setState(() => _value = v),
+          ),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('0.5 s', style: TextStyle(fontSize: 11, color: Colors.grey)),
+              Text('30 s', style: TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
+          ),
+        ],
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      actions: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  context.read<AppState>().setAveragingWindow(_value);
+                  Navigator.of(context).pop();
+                },
+                child: const Text('Apply'),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
 
 class _UnitButton extends StatelessWidget {
   final PressureUnit unit;
