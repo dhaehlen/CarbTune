@@ -1,4 +1,4 @@
 # CarbTune Ignore File
 
 # Ignore Markdown Editor Config 
-.obsidian/*
+*/.obsidian/*
