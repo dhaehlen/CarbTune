@@ -4,17 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **specification-stage** project for a wireless engine-tuning tool. There is no source code yet — the repository contains only design documentation. The tool reads manifold absolute pressure (MAP/vacuum) from up to four carburetor sensors and streams data to a mobile app via BLE.
+This is a wireless engine-tuning tool. The tool reads manifold absolute pressure (MAP/vacuum) from up to four carburetor sensors and streams data to a mobile app via BLE.
 
 Target use case: balancing carburetors on the Honda CB400F (4-cylinder, 4-carb) at a target vacuum of 16–24 cmHg.
 
 ## Repository Contents
 
-All documentation lives in `Documents/`:
-
-- **`functional_specification.md`** — v1.0 FSD. Authoritative source for functional requirements (SA-xx sensor acquisition, WC-xx wireless comms, MA-xx mobile app, LD-xx live display, DL-xx data logging, TG-xx tuning guidance, EC-xx engine calculations). All open questions resolved as of 2026-02-25.
-- **`design_decisions.md`** — ADR-001 through ADR-009. Records what was decided and why for each major architecture choice.
-- **`MPXA6115A.pdf`** — NXP pressure sensor datasheet (referenced by ADR-002 and SA-06).
+- **`documents/functional_specification.md`** — FSD v1.1. Authoritative source for functional requirements (SA-xx sensor acquisition, WC-xx wireless comms, MA-xx mobile app, LD-xx live display, DL-xx data logging, TG-xx tuning guidance, EC-xx engine calculations).
+- **`documents/design_decisions.md`** — ADR-001 through ADR-009. Records what was decided and why for each major architecture choice.
+- **`documents/project_information.md`** — Repository structure and orientation guide.
+- **`hardware/BOM.md`** — Bill of Materials (living document).
+- **`hardware/documents/MPXA6115A.pdf`** — NXP pressure sensor datasheet (referenced by ADR-002 and SA-06).
+- **`app/carbtune/`** — Flutter mobile app (V1 with mock data).
+- **`app/mockups/`** — UI design sketches (Excalidraw source + exported JPGs).
+- **`firmware/`** — ESP32 firmware (to be developed).
 
 ## Intended Architecture (from ADRs)
 
