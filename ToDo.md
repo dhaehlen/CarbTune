@@ -11,11 +11,15 @@ Place to write down the things that pop into my head.
 - [ ] mock up time/pressure graph
 - [ ] as part of the time pressure graph, add the instantaneous running average as a line across the chart.
 - [ ] handle cases where BLE packet protocol is not compatible with app gracefully
+- [ ] review pressure calculation, we expect a vacuum in the carb but will there be postive pressure at some
+point in the cycle as well? (pressure_unit.dart line 19)
 
 ### Embedded Firmware
 
 - [ ] validate transfer function Claude pulled from sensor spec
 - [ ] look into a self calibration routine on start up
+- [ ] flesh out requirement: take measurement of ambient pressure from each sensor before starting, compare and compensate,
+account for deactivated and defective sensors. Inform user of calibration results and reference sensor.
 - [ ] review 6.7 Engine Calculations - RPM there are some assumptions in there 
 
 ## Hardware
@@ -42,6 +46,7 @@ Place to write down the things that pop into my head.
 
 ## Overall Project
 
+- [ ] Tests
 
 ---
 ## Incomplete Functional Requirements
